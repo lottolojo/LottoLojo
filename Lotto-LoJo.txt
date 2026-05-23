@@ -1,0 +1,392 @@
+PROJECTNAAM:
+Lotto LoJo
+
+DOEL:
+Bouw een webapp voor een besloten vriendengroep die meespeelt met een interne loterij gebaseerd op de zaterdagtrekking van Lotto van de Nederlandse Loterij.
+
+De app gebruikt alleen de 6 normale Lotto-getallen.
+Niet gebruiken:
+- geen Lotto XL
+- geen reservegetal
+- geen gekleurde bal
+
+Iedere deelnemer kiest 10 nummers tussen 1 en 45.
+De officiële trekking bestaat uit 6 nummers.
+Als een deelnemer alle 6 getrokken nummers in zijn eigen 10 nummers heeft, wint hij/zij de pot.
+
+ALGEMENE REGELS:
+1. Deelnemer registreert zich.
+2. Admin moet deelnemer goedkeuren.
+3. Deelnemer kan pas meedoen na betaling/credits.
+4. Iedere trekking kost een instelbaar bedrag, standaard €3.
+5. Admin kan de inleg per trekking aanpassen.
+6. Admin kan het organisatorpercentage aanpassen, standaard 25%.
+7. Alleen deelnemers met genoeg credits doen mee.
+8. Als deelnemer te weinig credits heeft, doet hij/zij niet mee met de prijs.
+9. Als de pot valt, wordt de pot uitgekeerd en daarna gereset naar €0.
+10. Daarna start automatisch een nieuwe ronde.
+
+ADMIN ACCOUNT:
+Maak bij installatie een standaard administrator-account aan:
+
+Email:
+joudejans76@gmail.com
+
+Wachtwoord:
+Gebruik het opgegeven wachtwoord alleen als initiële setupwaarde.
+Sla dit nooit hardcoded of plaintext op.
+Gebruik password hashing, bijvoorbeeld bcrypt.
+Gebruik bij voorkeur environment variables:
+
+ADMIN_EMAIL=joudejans76@gmail.com
+ADMIN_INITIAL_PASSWORD=<plaats hier het wachtwoord uit de installatieomgeving>
+
+AUTHENTICATIE:
+- Login met email en wachtwoord.
+- Rollen:
+  - admin
+  - participant
+- Admin kan deelnemers goedkeuren of blokkeren.
+- Voeg gratis 2FA toe via email-login-code.
+- Werking 2FA:
+  1. gebruiker vult email + wachtwoord in
+  2. systeem stuurt 6-cijferige code naar email
+  3. code is 10 minuten geldig
+  4. pas na correcte code is login voltooid
+
+DEELNEMER FLOW:
+1. Registreren
+2. Wachten op admin-goedkeuring
+3. Credits opwaarderen of admin voegt credits toe
+4. 10 nummers kiezen tussen 1 en 45
+5. Meespelen zolang er genoeg credits zijn
+6. Resultaten bekijken na trekking
+7. Waarschuwing krijgen als credits bijna op zijn
+8. Optioneel afmelden vanaf de laatste betaalde trekking
+
+NUMMERS KIEZEN:
+- Iedere deelnemer kiest 10 unieke nummers.
+- Nummers moeten tussen 1 en 45 liggen.
+- Nummers kunnen gewijzigd worden vóór de trekking.
+- Wijzigen mag tot uiterlijk zaterdag 13:00.
+- Na zaterdag 13:00 worden de nummers gelocked voor die trekking.
+- Wijzigingen na de deadline gelden pas voor de volgende trekking.
+
+CREDITS:
+- Deelnemer heeft een creditsaldo.
+- Per trekking wordt automatisch de ingestelde inleg afgeschreven.
+- Voorbeeld: saldo €6 en inleg €3 = nog 2 trekkingen mogelijk.
+- Toon dit duidelijk op de homepage van de deelnemer.
+
+Homepage deelnemer moet tonen:
+- huidig saldo
+- inleg per trekking
+- aantal resterende trekkingen
+- status volgende trekking: Actief / Niet actief
+- gekozen 10 nummers
+- deadline voor wijzigen
+- knop om op te waarderen of betaalinstructie
+- waarschuwing bij laatste trekking
+
+WAARSCHUWING TE WEINIG CREDITS:
+Als iemand niet genoeg credits heeft:
+- rode omlijning rondom statuskaart
+- duidelijke popup
+- status: “Je doet niet mee aan deze trekking”
+- reden: “Te weinig credits”
+
+Popuptekst:
+“Je hebt niet genoeg credits om mee te doen aan deze trekking. Waardeer je saldo op om weer mee te spelen.”
+
+LAATSTE TREKKING WAARSCHUWING:
+Als deelnemer nog precies 1 trekking kan meedoen:
+Toon signaal:
+“Let op: dit is je laatste betaalde trekking. Waardeer je saldo op om daarna mee te blijven spelen.”
+
+AFMELDEN:
+- Vanaf het moment dat iemand nog 1 trekking tegoed heeft, kan hij/zij kiezen:
+  “Afmelden na deze trekking”
+- Daarna wordt de deelnemer inactief.
+- Inactieve deelnemers doen niet automatisch mee.
+- Admin kan deelnemer later weer activeren.
+
+TREKKING:
+Admin kan wekelijks de trekking invoeren:
+- datum trekking
+- 6 winnende nummers
+- reservegetal optioneel invoerbaar maar niet gebruiken
+- kleurbal niet gebruiken
+- knop: “Trekking publiceren”
+
+Na publiceren:
+- systeem bepaalt actieve deelnemers
+- systeem schrijft credits af bij actieve deelnemers
+- systeem telt matches
+- systeem bepaalt winnaar(s)
+- systeem berekent pot
+- systeem berekent organisatorwinst
+- systeem berekent uitkeerbare pot
+- systeem toont resultaat aan deelnemers
+
+POTBEREKENING:
+Per trekking:
+weekinleg = aantal actieve betaalde deelnemers × inleg_per_trekking
+
+Als niemand wint:
+pot = bestaande pot + weekinleg
+
+Als iemand wint:
+totale_pot = bestaande pot + weekinleg
+organisatorwinst = totale_pot × organisatorpercentage
+uitkeerbare_pot = totale_pot - organisatorwinst
+
+Bij 1 winnaar:
+winnaar krijgt volledige uitkeerbare pot
+
+Bij meerdere winnaars:
+uitkeerbare pot gelijk verdelen
+
+Daarna:
+pot reset naar €0
+nieuwe ronde start automatisch
+
+VOORBEELD:
+4 deelnemers
+inleg €3
+week 1 geen winnaar:
+pot = €12
+
+week 2 geen winnaar:
+pot = €24
+
+week 3 winnaar:
+nieuwe inleg = €12
+totale pot = €36
+organisatorpercentage = 25%
+organisatorwinst = €9
+uitkeerbare pot = €27
+winnaar krijgt €27
+pot reset naar €0
+
+WINLOGICA:
+- Deelnemer wint alleen als alle 6 trekkingnummers voorkomen in zijn/haar 10 gekozen nummers.
+- Deelnemer moet betaald hebben voor die trekking.
+- Deelnemer moet actief zijn.
+- Deelnemer moet goedgekeurd zijn.
+- Deelnemer moet genoeg credits hebben gehad vóór deelname.
+- Deelnemer mag niet afgemeld zijn.
+
+VISUELE LOTTOBALLEN:
+Gebruik ronde bolletjes voor nummers.
+
+Voor deelnemer:
+- eigen 10 nummers als ronde Lotto-ballen
+- gevallen/matchende nummers geel of goud
+- niet-gevallen nummers lichtgrijs
+- jackpot/winst eventueel groene of gouden glow
+
+Na nieuwe trekking:
+- wanneer deelnemer de app voor het eerst opent na publicatie:
+  - toon feestelijke animatie
+  - balletjes starten lichtgrijs
+  - matchende nummers veranderen naar geel/goud
+  - confetti bij iedere match
+  - bij jackpot extra grote confetti
+- animatie speelt maar 1 keer automatisch per trekking per deelnemer
+- daarna blijft resultaat normaal zichtbaar
+
+Teksten:
+Nieuwe trekking:
+“Nieuwe trekking binnen! Bekijk jouw nummers.”
+
+Bij match:
+“Je hebt {aantal} nummers goed.”
+
+Bij jackpot:
+“Jackpot! De pot is gevallen.”
+
+ADMIN DASHBOARD:
+Admin moet zien:
+- huidige pot
+- totale weekinleg
+- actieve deelnemers
+- deelnemers zonder genoeg credits
+- deelnemers die niet meedoen
+- organisatorpercentage
+- organisatorwinst bij potval
+- uitkeerbare pot
+- trekkinghistorie
+- winnaars
+- credits per deelnemer
+- betalingen
+- afmeldingen
+- nummerselecties
+- status per deelnemer
+
+Admin moet kunnen:
+- deelnemer goedkeuren
+- deelnemer blokkeren
+- credits toevoegen
+- credits corrigeren
+- inleg wijzigen
+- organisatorpercentage wijzigen
+- trekking invoeren
+- trekking publiceren
+- uitslag corrigeren indien nodig
+- pot resetten alleen met bevestiging
+- deelnemers handmatig actief/inactief zetten
+
+DATABASE MODELLEN:
+Gebruik bijvoorbeeld PostgreSQL, MySQL of SQLite.
+
+users:
+- id
+- name
+- email
+- password_hash
+- role: admin/participant
+- approved
+- blocked
+- two_factor_enabled
+- created_at
+- updated_at
+
+participant_profiles:
+- id
+- user_id
+- credits_balance
+- active
+- unsubscribe_after_current_draw
+- created_at
+- updated_at
+
+number_selections:
+- id
+- user_id
+- numbers_json
+- valid_from_draw_id
+- locked_at
+- created_at
+- updated_at
+
+draws:
+- id
+- draw_date
+- winning_numbers_json
+- reserve_number
+- published
+- published_at
+- created_at
+
+draw_entries:
+- id
+- draw_id
+- user_id
+- selected_numbers_json
+- paid
+- entry_fee
+- participated
+- excluded_reason
+- matches_json
+- match_count
+- is_winner
+- created_at
+
+settings:
+- id
+- entry_fee
+- organizer_percentage
+- number_change_deadline_time
+- created_at
+- updated_at
+
+pot_transactions:
+- id
+- draw_id
+- type
+- amount
+- description
+- created_at
+
+payouts:
+- id
+- draw_id
+- user_id
+- gross_pot
+- organizer_fee
+- payout_amount
+- paid_out
+- created_at
+
+two_factor_codes:
+- id
+- user_id
+- code_hash
+- expires_at
+- used_at
+- created_at
+
+BELANGRIJKE UI PAGINA’S:
+1. Login
+2. Registratie
+3. 2FA verificatie
+4. Wachten op goedkeuring
+5. Deelnemer dashboard
+6. Nummerselectie pagina
+7. Trekkingresultaat pagina
+8. Credits/betaling pagina
+9. Admin dashboard
+10. Admin deelnemersbeheer
+11. Admin trekking invoeren
+12. Admin instellingen
+13. Admin financiële historie
+
+TECHNISCHE STACK ADVIES:
+Frontend:
+- React
+- Tailwind CSS
+- Framer Motion voor animaties
+- Confetti library, bijvoorbeeld canvas-confetti
+
+Backend:
+- Node.js met Express of Next.js API routes
+- Prisma ORM
+- PostgreSQL of SQLite voor eerste versie
+- bcrypt voor wachtwoorden
+- nodemailer voor email-verificatiecodes
+
+BELANGRIJKE VALIDATIES:
+- Exact 10 unieke nummers per deelnemer
+- Nummers alleen 1 t/m 45
+- Trekking exact 6 unieke nummers
+- Geen deelname zonder credits
+- Geen deelname zonder goedkeuring
+- Geen wijziging na zaterdag 13:00
+- Reservegetal nooit meetellen
+- Kleurbal nooit meetellen
+- Pot alleen resetten na potval
+
+BELANGRIJKE SECURITY:
+- wachtwoorden nooit plaintext opslaan
+- admin wachtwoord via environment variable
+- gebruik bcrypt
+- gebruik CSRF bescherming indien nodig
+- rate limit op login
+- rate limit op 2FA codes
+- 2FA codes hashen
+- 2FA code verloopt na 10 minuten
+- admin routes beschermen
+- deelnemer mag alleen eigen gegevens zien
+
+MVP EERSTE VERSIE:
+Bouw eerst:
+1. registratie/login
+2. admin goedkeuring
+3. creditsysteem
+4. nummerselectie
+5. admin trekking invoeren
+6. automatische matchberekening
+7. potberekening
+8. deelnemer dashboard met bolletjes
+9. confetti-animatie bij nieuwe trekking
+10. admin dashboard met pot en organisatorwinst
