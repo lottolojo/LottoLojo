@@ -1,0 +1,28 @@
+
+
+Render
+
+
+Service ID:							dpg-d88qjb3eo5us7387ids0-a
+
+
+
+
+
+
+Hostname:							dpg-d88qjb3eo5us7387ids0-a
+
+Port:								5432
+
+Database							lottolojo
+
+Username							lottolojo_user
+
+Password							ekCnfqYBEysUgG5F9x8g0RSJhxh85CT2
+
+Internal database url				postgresql://lottolojo_user:ekCnfqYBEysUgG5F9x8g0RSJhxh85CT2@dpg-d88qjb3eo5us7387ids0-a/lottolojo
+
+External database url				postgresql://lottolojo_user:ekCnfqYBEysUgG5F9x8g0RSJhxh85CT2@dpg-d88qjb3eo5us7387ids0-a.oregon-postgres.render.com/lottolojo
+
+PSQL Command						PGPASSWORD=ekCnfqYBEysUgG5F9x8g0RSJhxh85CT2 psql -h dpg-d88qjb3eo5us7387ids0-a.oregon-postgres.render.com -U lottolojo_user lottolojo
+
