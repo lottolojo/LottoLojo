@@ -117,18 +117,7 @@ export default function App() {
         // Admin login via 5x klikken op logo
         const [logoClicks, setLogoClicks] = useState(0);
         const [showAdminModal, setShowAdminModal] = useState(false);
-        function handleLogoClick() {
-          setLogoClicks((prev) => {
-            const next = prev + 1;
-            if (next === 5) {
-              setShowAdminModal(true);
-              setLogoClicks(0);
-              return 0;
-            }
-            setTimeout(() => setLogoClicks(0), 2000);
-            return next;
-          });
-        }
+// Plaats deze functie bovenaan in de App component, niet in de render/JSX
       <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
         {language === "nl" && "Speel samen. Win samen. Doe mee!"}
