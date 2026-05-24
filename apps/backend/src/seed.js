@@ -9,7 +9,15 @@ async function main() {
       name: 'Johan',
       email: 'joudejans76@gmail.com',
       password: 'Sagitarius1%',
-      role: 'participant',
+      role: 'admin',
+      approved: true,
+      blocked: false,
+    },
+    {
+      name: 'LottoLoJo',
+      email: 'lottolojo@gmail.com',
+      password: 'Sagitarius1%',
+      role: 'admin',
       approved: true,
       blocked: false,
     },
@@ -41,7 +49,7 @@ async function main() {
       },
     });
   }
-  console.log('Seed klaar: Johan en Nettie zijn aangemaakt.');
+  console.log('Seed klaar: Johan, LottoLoJo en Nettie zijn aangemaakt.');
 }
 
 main()

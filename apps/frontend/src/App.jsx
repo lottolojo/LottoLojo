@@ -95,19 +95,32 @@ export default function App() {
         src="/logo.svg"
         alt="LottoLoJo logo"
         className="w-32 mb-6 drop-shadow-lg z-10 cursor-pointer"
-        onClick={(() => {
-          let clickCount = 0;
-          return function () {
-            clickCount++;
-            if (clickCount === 5) {
+        onClick={handleLogoClick}
+      />
+
+      {/* Feedback admin login */}
+      {showAdminHint && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-700 text-white px-4 py-2 rounded shadow z-50 animate-pulse">
+          Admin login geactiveerd!
+        </div>
+      )}
+        // Admin login via 5x klikken op logo
+        const [logoClicks, setLogoClicks] = useState(0);
+        const [showAdminHint, setShowAdminHint] = useState(false);
+        function handleLogoClick() {
+          setLogoClicks((prev) => {
+            const next = prev + 1;
+            if (next === 5) {
               window.history.pushState({}, "", "/admin");
               window.dispatchEvent(new PopStateEvent("popstate"));
-              clickCount = 0;
+              setShowAdminHint(true);
+              setTimeout(() => setShowAdminHint(false), 2000);
+              return 0;
             }
-            setTimeout(() => { clickCount = 0; }, 2000);
-          };
-        })()}
-      />
+            setTimeout(() => setLogoClicks(0), 2000);
+            return next;
+          });
+        }
       <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
         {language === "nl" && "Speel samen. Win samen. Doe mee!"}

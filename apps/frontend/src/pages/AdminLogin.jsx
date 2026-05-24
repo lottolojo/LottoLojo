@@ -13,15 +13,23 @@ export default function AdminLogin({ onLogin }) {
     e.preventDefault();
     setLoading(true);
     setInfo("");
-    // Dummy check, vervang door echte backend-call
-    if (
-      form.email === "joudejans76@gmail.com" &&
-      form.password === "Sagitarius1%"
-    ) {
-      setInfo("Inloggen gelukt!");
-      onLogin && onLogin();
-    } else {
-      setInfo("Ongeldige combinatie.");
+    try {
+      const res = await fetch("https://lottolojo-1.onrender.com/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, password: form.password })
+      });
+      const data = await res.json();
+      if (res.ok && data.user && data.user.role === "admin") {
+        setInfo("Succesvol ingelogd als admin!");
+        onLogin && onLogin();
+      } else if (res.ok) {
+        setInfo("Je hebt geen admin-rechten.");
+      } else {
+        setInfo(data.error || "Ongeldige combinatie.");
+      }
+    } catch {
+      setInfo("Netwerkfout.");
     }
     setLoading(false);
   }
