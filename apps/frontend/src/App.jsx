@@ -59,6 +59,9 @@ export default function App() {
   const [authModal, setAuthModal] = useState({ open: false, type: "login" });
   const [loggedIn, setLoggedIn] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  // Admin login via 5x klikken op logo
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   // Ballen: 10 stuks, 4-7 worden LOJO
   const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
@@ -114,10 +117,6 @@ export default function App() {
           </div>
         </div>
       )}
-        // Admin login via 5x klikken op logo
-        const [logoClicks, setLogoClicks] = useState(0);
-        const [showAdminModal, setShowAdminModal] = useState(false);
-// Plaats deze functie bovenaan in de App component, niet in de render/JSX
       <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
         {language === "nl" && "Speel samen. Win samen. Doe mee!"}
