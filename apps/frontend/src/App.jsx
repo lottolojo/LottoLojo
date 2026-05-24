@@ -24,7 +24,6 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
   );
 }
 
-import { useEffect, useState } from "react";
 
 function RulesModal({ open, onClose }) {
   if (!open) return null;
@@ -52,6 +51,8 @@ function RulesModal({ open, onClose }) {
     </div>
   );
 }
+
+export default function App() {
   const [showAnimation, setShowAnimation] = useState(true);
   const [language, setLanguage] = useState("nl");
   const [lojoPhase, setLojoPhase] = useState(false);
