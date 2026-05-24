@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 
+// Pas dit aan naar jouw backend-URL indien nodig
+const API_URL = "/api";
+
 export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [phase, setPhase] = useState(type); // "login", "register", "verify2fa", "login2fa"
   const [loginAttempts, setLoginAttempts] = useState(0);
@@ -58,29 +61,101 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (isRegister) {
-      // Simuleer backend: stuur 2FA mail
-      setInfo("Er is een verificatiecode naar je e-mail gestuurd.");
-      setPhase("verify2fa");
-    } else if (isLogin) {
-      // Simuleer backend: tel pogingen
-      if (form.email === "test@fail.com" || form.password === "fout") {
-        // Simuleer fout wachtwoord
-        const attempts = loginAttempts + 1;
-        setLoginAttempts(attempts);
-        setInfo("Ongeldige combinatie. Probeer opnieuw.");
-        if (attempts >= 3) {
-          setInfo("Te veel mislukte pogingen. Er is een code naar je e-mail gestuurd.");
-          setPhase("login2fa");
+      // Registreer gebruiker
+      setInfo("");
+      try {
+        const res = await fetch(`${API_URL}/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            password: form.password
+          })
+        });
+        if (res.ok) {
+          setInfo("Er is een verificatiecode naar je e-mail gestuurd.");
+          setPhase("verify2fa");
+        } else {
+          const data = await res.json();
+          setInfo(data.error || "Registratie mislukt.");
         }
-      } else {
-        onSubmit(form);
+      } catch (err) {
+        setInfo("Netwerkfout bij registratie.");
       }
-    } else if (isVerify2fa || isLogin2fa) {
-      // Simuleer 2FA verificatie
-      onSubmit(form);
+    } else if (isLogin) {
+      // Login gebruiker
+      setInfo("");
+      try {
+        const res = await fetch(`${API_URL}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password
+          })
+        });
+        if (res.ok) {
+          // Login succesvol
+          onSubmit(form);
+        } else {
+          const data = await res.json();
+          // Check of 2FA vereist is
+          if (data.require2fa) {
+            setInfo("Te veel mislukte pogingen. Er is een code naar je e-mail gestuurd.");
+            setPhase("login2fa");
+          } else {
+            setInfo(data.error || "Ongeldige combinatie. Probeer opnieuw.");
+          }
+        }
+      } catch (err) {
+        setInfo("Netwerkfout bij inloggen.");
+      }
+    } else if (isVerify2fa) {
+      // Verifieer registratie 2FA
+      setInfo("");
+      try {
+        const res = await fetch(`${API_URL}/verify2fa`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email,
+            pincode: form.pincode
+          })
+        });
+        if (res.ok) {
+          onSubmit(form);
+        } else {
+          const data = await res.json();
+          setInfo(data.error || "Verificatie mislukt.");
+        }
+      } catch (err) {
+        setInfo("Netwerkfout bij verificatie.");
+      }
+    } else if (isLogin2fa) {
+      // Verifieer login 2FA
+      setInfo("");
+      try {
+        const res = await fetch(`${API_URL}/login2fa`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email,
+            pincode: form.pincode
+          })
+        });
+        if (res.ok) {
+          onSubmit(form);
+        } else {
+          const data = await res.json();
+          setInfo(data.error || "Verificatie mislukt.");
+        }
+      } catch (err) {
+        setInfo("Netwerkfout bij verificatie.");
+      }
     }
   }
 

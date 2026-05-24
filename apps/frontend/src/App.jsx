@@ -93,9 +93,9 @@ export default function App() {
             transition={{ duration: 0.8 }}
           >
             <p className="text-lg text-yellow-800 mb-8 z-10">
-              {language === "nl" && "Speel samen. Win samen. veilig en fun, Doe mee!"}
-              {language === "en" && "Play together. Win together. Safe and fun, join us!"}
-              {language === "es" && "Juega juntos. Gana juntos. Seguro y divertido, ¡únete!"}
+              {language === "nl" && "Speel samen. Win samen. Doe mee!"}
+              {language === "en" && "Play together. Win together. Join us!"}
+              {language === "es" && "Juega juntos. Gana juntos. ¡Únete!"}
             </p>
             <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
               <p className="text-center text-green-700 font-semibold mb-4">
