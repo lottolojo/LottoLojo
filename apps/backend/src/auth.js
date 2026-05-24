@@ -1,3 +1,51 @@
+// Middleware: check admin
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: 'Geen token' });
+  try {
+    const token = auth.replace('Bearer ', '');
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    if (payload.role !== 'admin') return res.status(403).json({ error: 'Geen admin-rechten' });
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Ongeldige token' });
+  }
+}
+
+// Admin: alle users ophalen (inclusief credits)
+router.get('/admin/users', requireAdmin, async (req, res) => {
+  const users = await prisma.user.findMany({
+    include: { profile: true }
+  });
+  res.json(users);
+});
+
+// Admin: role aanpassen (max 2 extra admins naast LottoLoJo)
+router.post('/admin/set-role', requireAdmin, async (req, res) => {
+  const { userId, role } = req.body;
+  if (!userId || !role) return res.status(400).json({ error: 'userId en role verplicht' });
+  if (role === 'admin') {
+    // Tel huidige admins (behalve LottoLoJo)
+    const admins = await prisma.user.findMany({ where: { role: 'admin', email: { not: 'lottolojo@gmail.com' } } });
+    if (admins.length >= 2) return res.status(400).json({ error: 'Maximaal 2 extra admins toegestaan' });
+  }
+  const user = await prisma.user.update({ where: { id: userId }, data: { role } });
+  res.json(user);
+});
+
+// Admin: credits aanpassen
+router.post('/admin/set-credits', requireAdmin, async (req, res) => {
+  const { userId, credits } = req.body;
+  if (typeof userId !== 'number' || typeof credits !== 'number') return res.status(400).json({ error: 'userId en credits verplicht' });
+  let profile = await prisma.participantProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    profile = await prisma.participantProfile.create({ data: { userId, creditsBalance: credits } });
+  } else {
+    profile = await prisma.participantProfile.update({ where: { userId }, data: { creditsBalance: credits } });
+  }
+  res.json(profile);
+});
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
