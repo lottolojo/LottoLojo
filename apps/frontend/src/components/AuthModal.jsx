@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 // Zet hier je backend-URL, bijvoorbeeld van Render of localhost
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api";
+const API_URL = "https://lottolojo-1.onrender.com/auth";
 
 export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [phase, setPhase] = useState(type); // "login", "register", "verify2fa", "login2fa"
@@ -69,7 +69,6 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (isRegister) {
-      // Registreer gebruiker
       setInfo("");
       try {
         const res = await fetch(`${API_URL}/register`, {
@@ -81,11 +80,14 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
             password: form.password
           })
         });
+        const data = await res.json();
         if (res.ok) {
-          setInfo("Er is een verificatiecode naar je e-mail gestuurd.");
-          setPhase("verify2fa");
+          setInfo("Registratie gelukt! Klik op de verificatielink die je per e-mail hebt ontvangen om je account te activeren.");
+          // Toon de verificatielink als mock (voor testen)
+          if (data.verifyUrl) {
+            setInfo(prev => prev + `\n\nVerificatielink: ${data.verifyUrl}`);
+          }
         } else {
-          const data = await res.json();
           setInfo(data.error || "Registratie mislukt.");
         }
       } catch (err) {
@@ -108,8 +110,9 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           onSubmit(form);
         } else {
           const data = await res.json();
-          // Check of 2FA vereist is
-          if (data.require2fa) {
+          if (data.error === "E-mail nog niet geverifieerd.") {
+            setInfo("Je account is nog niet geactiveerd. Check je e-mail voor de verificatielink.");
+          } else if (data.require2fa) {
             setInfo("Te veel mislukte pogingen. Er is een code naar je e-mail gestuurd.");
             setPhase("login2fa");
           } else {
