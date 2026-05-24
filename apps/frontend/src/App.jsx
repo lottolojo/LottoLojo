@@ -63,10 +63,23 @@ export default function App() {
   const [logoClicks, setLogoClicks] = useState(0);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
+  // Toon gekozen nummers als ze bestaan in localStorage
+  const [userNumbers, setUserNumbers] = useState(null);
+  useEffect(() => {
+    const stored = localStorage.getItem("lotto_numbers");
+    if (stored) {
+      try {
+        const arr = JSON.parse(stored);
+        if (Array.isArray(arr) && arr.length === 10 && arr.every(n => typeof n === "number")) {
+          setUserNumbers(arr);
+        }
+      } catch {}
+    }
+  }, []);
 
   // Ballen: 10 stuks, 4-7 worden LOJO
-  const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
-  const lojoIndices = [3, 4, 5, 6];
+  const ballNumbers = userNumbers || [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
+  const lojoIndices = userNumbers ? [] : [3, 4, 5, 6];
   const lojoLetters = ["L", "O", "J", "O"];
 
   // Handler voor 5x klikken op logo
@@ -137,7 +150,7 @@ export default function App() {
         {language === "es" && "Juega juntos. Gana juntos. ¡Únete!"}
       </p>
 
-      {/* Animatie */}
+      {/* Animatie of gekozen nummers */}
       <AnimatePresence mode="wait">
         {showAnimation ? (
           <motion.div
@@ -156,6 +169,34 @@ export default function App() {
                 lojoLetter={lojoPhase && lojoIndices.includes(i) ? lojoLetters[lojoIndices.indexOf(i)] : null}
               />
             ))}
+          </motion.div>
+        ) : userNumbers ? (
+          <motion.div
+            key="usernumbers"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
+              <p className="text-center text-green-700 font-semibold mb-4">
+                Jouw gekozen nummers:
+              </p>
+              <div className="flex flex-row flex-wrap justify-center mb-4">
+                {userNumbers.map((num, i) => (
+                  <LottoBall key={i} number={num} animate={true} />
+                ))}
+              </div>
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
+                onClick={() => {
+                  localStorage.removeItem("lotto_numbers");
+                  window.location.reload();
+                }}
+              >
+                Kies opnieuw
+              </button>
+            </div>
           </motion.div>
         ) : (
           <motion.div

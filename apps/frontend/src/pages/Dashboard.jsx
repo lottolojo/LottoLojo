@@ -50,6 +50,13 @@ export default function Dashboard() {
     const sorted = [...selected].sort((a, b) => a - b);
     setNumbers(sorted);
     setShowPicker(false);
+    // Sla op in localStorage zodat App.jsx ze kan tonen
+    localStorage.setItem("lotto_numbers", JSON.stringify(sorted));
+  }
+
+  function goToHome() {
+    window.history.pushState({}, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
   return (
@@ -66,6 +73,15 @@ export default function Dashboard() {
       >
         Selecteer nummers
       </button>
+      {/* Toon terugknop als er gekozen nummers zijn */}
+      {numbers.every(n => n !== null) && (
+        <button
+          className="bg-yellow-500 hover:bg-yellow-600 text-green-900 font-bold py-2 px-4 rounded mb-2"
+          onClick={goToHome}
+        >
+          Terug naar overzicht
+        </button>
+      )}
       {showPicker && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg relative flex flex-col items-center">
