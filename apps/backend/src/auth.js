@@ -169,8 +169,8 @@ router.post('/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).json({ error: 'Ongeldige combinatie.' });
   // JWT-token genereren
-  const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ message: 'Login gelukt', token, user: { id: user.id, name: user.name, email: user.email } });
+  const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ message: 'Login gelukt', token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 });
 
 // Password recovery: start
