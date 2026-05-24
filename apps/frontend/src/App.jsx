@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "./theme.css";
+import AdminLogin from "./pages/AdminLogin";
 import AuthModal from "./components/AuthModal";
 import { motion, AnimatePresence } from "framer-motion";
 
