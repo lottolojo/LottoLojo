@@ -62,7 +62,12 @@ export default function App() {
       </div>
 
       <img src="/logo.svg" alt="LottoLoJo logo" className="w-32 mb-6 drop-shadow-lg z-10" />
-      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10">Lotto LoJo</h1>
+      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
+      <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
+        {language === "nl" && "Speel samen. Win samen. Doe mee!"}
+        {language === "en" && "Play together. Win together. Join us!"}
+        {language === "es" && "Juega juntos. Gana juntos. ¡Únete!"}
+      </p>
 
       {/* Animatie */}
       <AnimatePresence mode="wait">
@@ -92,11 +97,6 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <p className="text-lg text-yellow-800 mb-8 z-10">
-              {language === "nl" && "Speel samen. Win samen. Doe mee!"}
-              {language === "en" && "Play together. Win together. Join us!"}
-              {language === "es" && "Juega juntos. Gana juntos. ¡Únete!"}
-            </p>
             <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
               <p className="text-center text-green-700 font-semibold mb-4">
                 {language === "nl" && "Welkom bij de besloten Lotto voor vrienden!"}

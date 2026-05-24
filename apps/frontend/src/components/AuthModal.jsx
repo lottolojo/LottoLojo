@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
-// Pas dit aan naar jouw backend-URL indien nodig
-const API_URL = "/api";
+// Zet hier je backend-URL, bijvoorbeeld van Render of localhost
+const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api";
 
 export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [phase, setPhase] = useState(type); // "login", "register", "verify2fa", "login2fa"
