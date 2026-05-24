@@ -76,21 +76,23 @@ router.post('/register', async (req, res) => {
   const verifyToken = crypto.randomBytes(32).toString('hex');
   const user = await prisma.user.create({
     data: { name, email, password: hash, role: 'participant', approved: false }
-  });
-  // Sla verificatiecode op (in TwoFactorCode, type 'email')
-  await prisma.twoFactorCode.create({
-    data: {
-      userId: user.id,
-      codeHash: verifyToken,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 uur geldig
-    }
-  });
-  // Verificatie-link
-  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`;
-  // Stuur e-mail
   try {
+    // ... bestaande code ...
+    // Stuur verificatie e-mail
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
+      to: email,
+      subject: 'Bevestig je registratie',
+      text: `Klik op de volgende link om je account te activeren: ${verifyUrl}`,
+      html: `<p>Klik op de volgende link om je account te activeren:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`
+    });
+    res.json({ message: 'Registratie gelukt! Check je e-mail.' });
+  } catch (err) {
+    console.error('Mailfout bij registratie:', err);
+    let msg = 'Kon geen e-mail sturen. Controleer of het mailadres klopt of neem contact op.';
+    if (err && err.response) msg += ' Mailserver: ' + err.response;
+    res.status(500).json({ error: msg });
+  }
       to: email,
       subject: 'Bevestig je LottoLoJo account',
       html: `<p>Welkom bij LottoLoJo! Klik op de onderstaande link om je account te activeren:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`
