@@ -63,10 +63,23 @@ export default function App() {
   const [logoClicks, setLogoClicks] = useState(0);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
+
   // Ballen: 10 stuks, 4-7 worden LOJO
   const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
   const lojoIndices = [3, 4, 5, 6];
   const lojoLetters = ["L", "O", "J", "O"];
+
+  // Handler voor 5x klikken op logo
+  function handleLogoClick() {
+    setLogoClicks((prev) => {
+      const clicks = prev + 1;
+      if (clicks >= 5) {
+        setShowAdminModal(true);
+        return 0;
+      }
+      return clicks;
+    });
+  }
 
   useEffect(() => {
     // Start animatie, na 2.5s transformeren ballen 4-7 naar LOJO, na 4s animatie klaar
