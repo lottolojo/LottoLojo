@@ -13,7 +13,8 @@ export default function ResetPassword() {
     setLoading(true);
     setInfo("");
     try {
-      const res = await fetch("https://lottolojo-1.onrender.com/auth/request-password-reset", {
+      const API_URL = import.meta.env.VITE_API_URL + "/auth";
+      const res = await fetch(`${API_URL}/request-password-reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
@@ -36,7 +37,8 @@ export default function ResetPassword() {
     setLoading(true);
     setInfo("");
     try {
-      const res = await fetch("https://lottolojo-1.onrender.com/auth/reset-password", {
+      const API_URL = import.meta.env.VITE_API_URL + "/auth";
+      const res = await fetch(`${API_URL}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, token, newPassword })

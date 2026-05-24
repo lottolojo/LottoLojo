@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL + "/auth";
 
 export default function AdminLogin({ onLogin }) {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -15,7 +15,7 @@ export default function AdminLogin({ onLogin }) {
     setLoading(true);
     setInfo("");
     try {
-      const res = await fetch("https://lottolojo-1.onrender.com/auth/login", {
+      const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, password: form.password })

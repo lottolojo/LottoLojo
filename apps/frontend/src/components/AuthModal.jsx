@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { BUILD_NUMBER } from "../buildinfo";
 
-// Zet hier je backend-URL, bijvoorbeeld van Render of localhost
-const API_URL = "https://lottolojo-1.onrender.com/auth";
+// Gebruik altijd de backend-URL uit .env
+const API_URL = import.meta.env.VITE_API_URL + "/auth";
 
 export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [phase, setPhase] = useState(type); // "login", "register", "verify2fa", "login2fa"
