@@ -1,10 +1,34 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 
-function Ball({ number }) {
+function Ball({ number, animate, delay }) {
   return (
-    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg mx-1 mb-2 border-4 border-white drop-shadow-lg ${number ? 'bg-gradient-to-br from-yellow-300 to-green-400 text-black' : 'bg-gray-300 text-gray-400'}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg mx-1 mb-2 border-4 border-white drop-shadow-lg ${number ? 'bg-gradient-to-br from-yellow-300 to-green-400 text-black' : 'bg-gray-300 text-gray-400'}`}
+    >
       {number || "?"}
-    </div>
+      {/* Fonkeltje animatie */}
+      {number && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: -24 }}
+          transition={{ duration: 0.3, delay: delay + 0.3 }}
+          className="absolute left-1/2 -translate-x-1/2 top-0"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <g filter="url(#glow)"><circle cx="9" cy="9" r="3" fill="#fff700"/></g>
+            <g filter="url(#sparkle)"><circle cx="9" cy="9" r="1.5" fill="#fff"/></g>
+            <defs>
+              <filter id="glow" x="0" y="0" width="18" height="18" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="3"/></filter>
+              <filter id="sparkle" x="5" y="5" width="8" height="8" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="1"/></filter>
+            </defs>
+          </svg>
+        </motion.div>
+      )}
+    </motion.div>
   );
 }
 
@@ -22,7 +46,9 @@ export default function Dashboard() {
   }
 
   function saveNumbers() {
-    setNumbers(selected);
+    // Sorteer de geselecteerde nummers oplopend
+    const sorted = [...selected].sort((a, b) => a - b);
+    setNumbers(sorted);
     setShowPicker(false);
   }
 
@@ -30,7 +56,9 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
       <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Jouw 10 Lotto LoJo nummers</h2>
       <div className="flex flex-row flex-wrap justify-center mb-6">
-        {numbers.map((num, i) => <Ball key={i} number={num} />)}
+        {numbers.map((num, i) => (
+          <Ball key={i} number={num} animate={!!num} delay={i * 0.15} />
+        ))}
       </div>
       <button
         className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
