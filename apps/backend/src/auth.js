@@ -1,3 +1,4 @@
+// ...imports en initialisatie...
 // Wachtwoord wijzigen: stap 1 (verzoek)
 router.post('/request-password-reset', async (req, res) => {
   const { email } = req.body;
