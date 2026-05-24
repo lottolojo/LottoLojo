@@ -125,26 +125,22 @@ export default function App() {
       <img
         src="/logo.svg"
         alt="LottoLoJo logo"
-        className="w-32 mb-6 drop-shadow-lg z-10 cursor-pointer"
-        onClick={handleLogoClick}
+        className="w-32 mb-6 drop-shadow-lg z-10 select-none"
+        style={{ cursor: "default" }}
+        onClick={() => {
+          setLogoClicks((prev) => {
+            const clicks = prev + 1;
+            if (clicks >= 5) {
+              window.history.pushState({}, "", "/admin");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+              return 0;
+            }
+            return clicks;
+          });
+        }}
       />
 
-      {/* Admin login modal */}
-      {showAdminModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-xs relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-green-700"
-              onClick={() => setShowAdminModal(false)}
-              aria-label="Sluiten"
-            >
-              ×
-            </button>
-            <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Admin Login</h2>
-            <AdminLogin onLogin={() => setShowAdminModal(false)} />
-          </div>
-        </div>
-      )}
+      {/* Geen popup meer voor admin login, navigatie gaat direct naar /admin */}
       {/* Alleen logo, geen tekst Lotjo direct onder logo */}
       <div className="mb-2 z-10 text-center"></div>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">

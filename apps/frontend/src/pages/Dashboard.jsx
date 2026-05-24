@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 
 function Ball({ number, animate, delay }) {
@@ -41,12 +41,17 @@ export default function Dashboard() {
   const [showPicker, setShowPicker] = useState(false);
   const [selected, setSelected] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+  const audioRef = useRef();
+
   function handleSelect(num) {
     if (selected.includes(num)) {
       setSelected(selected.filter(n => n !== num));
     } else if (selected.length < 10) {
       setSelected([...selected, num]);
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
     }
   }
 
@@ -66,6 +71,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
+      <audio ref={audioRef} src="/assets/bloop.mp3" preload="auto" />
       <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">
         {language === "nl" && "Jouw 10 Lotjo nummers"}
         {language === "en" && "Your 10 Lotjo numbers"}

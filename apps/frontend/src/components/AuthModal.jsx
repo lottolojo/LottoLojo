@@ -175,7 +175,7 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-xs relative">
+      <div className="bg-white rounded-xl shadow-2xl p-10 w-full max-w-md relative">
         <button
           className="absolute top-2 right-2 text-gray-400 hover:text-green-700"
           onClick={onClose}

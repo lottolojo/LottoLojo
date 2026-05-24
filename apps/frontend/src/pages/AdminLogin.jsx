@@ -21,7 +21,8 @@ export default function AdminLogin({ onLogin }) {
         body: JSON.stringify({ email: form.email, password: form.password })
       });
       const data = await res.json();
-      if (res.ok && data.user && data.user.role === "admin") {
+      if (res.ok && data.user && data.user.role === "admin" && data.token) {
+        localStorage.setItem("lotto_token", data.token);
         setInfo("Succesvol ingelogd als admin!");
         onLogin && onLogin();
       } else if (res.ok) {
@@ -37,21 +38,21 @@ export default function AdminLogin({ onLogin }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
-      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative">
-        <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">
+      <div className="bg-white rounded-xl shadow-2xl p-12 w-full max-w-2xl relative flex flex-col items-center">
+        <h2 className="text-3xl font-bold mb-6 text-green-800 text-center">
           {language === "nl" && "Admin login"}
           {language === "en" && "Admin login"}
           {language === "es" && "Acceso admin"}
         </h2>
-        {info && <div className="text-sm text-yellow-700 mb-2 text-center">{info}</div>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {info && <div className="text-base text-yellow-700 mb-4 text-center">{info}</div>}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full max-w-lg">
           <input
             type="email"
             name="email"
             placeholder={language === "nl" ? "E-mailadres" : language === "en" ? "Email address" : "Correo electrónico"}
             value={form.email}
             onChange={handleChange}
-            className="border rounded px-3 py-2"
+            className="border rounded px-4 py-3 text-lg"
             required
           />
           <input
@@ -60,12 +61,12 @@ export default function AdminLogin({ onLogin }) {
             placeholder={language === "nl" ? "Wachtwoord" : language === "en" ? "Password" : "Contraseña"}
             value={form.password}
             onChange={handleChange}
-            className="border rounded px-3 py-2"
+            className="border rounded px-4 py-3 text-lg"
             required
           />
           <button
             type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-base mt-2"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded text-lg mt-2"
             disabled={loading}
           >
             {loading

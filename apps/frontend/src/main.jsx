@@ -1,9 +1,11 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+
 import App from "./App";
 import AdminLogin from "./pages/AdminLogin";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import AdminPanel from "./pages/AdminPanel";
 import "./index.css";
 
 function Router() {
@@ -13,10 +15,16 @@ function Router() {
 		window.addEventListener("popstate", handler);
 		return () => window.removeEventListener("popstate", handler);
 	}, []);
-	if (route === "/admin") return <AdminLogin />;
-	if (route === "/reset-password") return <ResetPassword />;
-	if (route === "/dashboard") return <Dashboard />;
-	return <App />;
+			 if (route === "/admin") return <AdminLogin />;
+			 if (route === "/admin-panel") {
+				 // Vereist JWT-token in localStorage
+				 const token = localStorage.getItem("lotto_token");
+				 if (!token) return <div>Niet ingelogd als admin.</div>;
+				 return <AdminPanel token={token} />;
+			 }
+			 if (route === "/reset-password") return <ResetPassword />;
+			 if (route === "/dashboard") return <Dashboard />;
+			 return <App />;
 }
 
 createRoot(document.getElementById("root")).render(<Router />);
