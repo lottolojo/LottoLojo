@@ -131,8 +131,6 @@ export default function App() {
         type={authModal.type}
         onClose={() => setAuthModal({ ...authModal, open: false })}
         onSubmit={(data) => {
-          // Hier komt straks de backend-koppeling
-          alert(JSON.stringify(data, null, 2));
           setAuthModal({ ...authModal, open: false });
         }}
         language={language}

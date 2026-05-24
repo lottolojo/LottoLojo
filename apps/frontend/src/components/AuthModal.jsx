@@ -5,6 +5,11 @@ const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api"
 
 export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [phase, setPhase] = useState(type); // "login", "register", "verify2fa", "login2fa"
+
+  // Reset fase als type verandert (bij openen modal)
+  React.useEffect(() => {
+    setPhase(type);
+  }, [type, open]);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [form, setForm] = useState({
     email: "",
