@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { BUILD_NUMBER } from "../buildinfo";
 
 // Zet hier je backend-URL, bijvoorbeeld van Render of localhost
 const API_URL = "https://lottolojo-1.onrender.com/auth";
@@ -25,6 +26,7 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const isRegister = phase === "register";
   const isVerify2fa = phase === "verify2fa";
   const isLogin2fa = phase === "login2fa";
+  const isForgot = phase === "forgot";
 
   const labels = {
     nl: {
@@ -186,61 +188,123 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           {isRegister && l.register}
           {isVerify2fa && l.pincode}
           {isLogin2fa && l.pincode}
+          {isForgot && "Wachtwoord vergeten"}
         </h2>
         {info && <div className="text-sm text-yellow-700 mb-2 text-center">{info}</div>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {isRegister && (
-            <input
-              type="text"
-              name="name"
-              placeholder={l.name}
-              value={form.name}
-              onChange={handleChange}
-              className="border rounded px-3 py-2"
-              required
-            />
-          )}
-          {(isRegister || isLogin) && (
-            <>
-              <input
-                type="email"
-                name="email"
-                placeholder={l.email}
-                value={form.email}
-                onChange={handleChange}
-                className="border rounded px-3 py-2"
-                required
-              />
-              <input
-                type="password"
-                name="password"
-                placeholder={l.password}
-                value={form.password}
-                onChange={handleChange}
-                className="border rounded px-3 py-2"
-                required
-              />
-            </>
-          )}
-          {(isVerify2fa || isLogin2fa) && (
-            <input
-              type="text"
-              name="pincode"
-              placeholder={l.pincode}
-              value={form.pincode}
-              onChange={handleChange}
-              className="border rounded px-3 py-2"
-              required
-              maxLength={6}
-            />
-          )}
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded mt-2"
+        {isForgot ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setInfo("");
+              try {
+                const res = await fetch(`${API_URL}/forgot-password`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: form.email })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                  setInfo("Er is een e-mail verstuurd met instructies om je wachtwoord te resetten.");
+                } else {
+                  setInfo(data.error || data.message || "Kon geen reset-link sturen.");
+                }
+              } catch {
+                setInfo("Netwerkfout bij wachtwoord reset.");
+              }
+            }}
+            className="flex flex-col gap-3"
           >
-            {l.submit}
-          </button>
-        </form>
+            <input
+              type="email"
+              name="email"
+              placeholder={l.email}
+              value={form.email}
+              onChange={handleChange}
+              className="border rounded px-3 py-2"
+              required
+            />
+            <button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded mt-2"
+            >
+              Verstuur reset-link
+            </button>
+            <button
+              type="button"
+              className="text-xs text-gray-500 underline mt-2"
+              onClick={() => setPhase("login")}
+            >
+              Terug naar inloggen
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            {isRegister && (
+              <input
+                type="text"
+                name="name"
+                placeholder={l.name}
+                value={form.name}
+                onChange={handleChange}
+                className="border rounded px-3 py-2"
+                required
+              />
+            )}
+            {(isRegister || isLogin) && (
+              <>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder={l.email}
+                  value={form.email}
+                  onChange={handleChange}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder={l.password}
+                  value={form.password}
+                  onChange={handleChange}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+                {/* Wachtwoord vergeten link */}
+                {isLogin && (
+                  <div className="text-xs text-gray-500 mt-1 mb-2 text-center">
+                    <span
+                      style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                      onClick={() => setPhase("forgot")}
+                    >
+                      Wachtwoord vergeten?
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+            {(isVerify2fa || isLogin2fa) && (
+              <input
+                type="text"
+                name="pincode"
+                placeholder={l.pincode}
+                value={form.pincode}
+                onChange={handleChange}
+                className="border rounded px-3 py-2"
+                required
+                maxLength={6}
+              />
+            )}
+            <button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded mt-2"
+            >
+              {l.submit}
+            </button>
+          </form>
+        )}
+        {/* Buildnummer/versie onderin */}
+        <div className="text-[10px] text-gray-400 mt-4 text-center select-none">Build: {BUILD_NUMBER}</div>
       </div>
     </div>
   );
