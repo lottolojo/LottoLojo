@@ -1,6 +1,8 @@
 
+
 import React, { useState, useEffect } from "react";
 import "./theme.css";
+import AuthModal from "./components/AuthModal";
 
 const LANGUAGES = [
   { code: "nl", label: "Nederlands", flag: "🇳🇱" },
@@ -24,6 +26,7 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
   const [showAnimation, setShowAnimation] = useState(true);
   const [language, setLanguage] = useState("nl");
   const [lojoPhase, setLojoPhase] = useState(false);
+  const [authModal, setAuthModal] = useState({ open: false, type: "login" });
 
   // Ballen: 10 stuks, 4-7 worden LOJO
   const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
@@ -86,12 +89,18 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
               {language === "es" && "¡Bienvenido a la Lotería privada para amigos!"}
             </p>
             <div className="flex flex-col gap-4">
-              <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all">
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
+                onClick={() => setAuthModal({ open: true, type: "login" })}
+              >
                 {language === "nl" && "Inloggen"}
                 {language === "en" && "Login"}
                 {language === "es" && "Iniciar sesión"}
               </button>
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-green-900 font-bold py-2 rounded transition-all">
+              <button
+                className="bg-yellow-400 hover:bg-yellow-500 text-green-900 font-bold py-2 rounded transition-all"
+                onClick={() => setAuthModal({ open: true, type: "register" })}
+              >
                 {language === "nl" && "Registreren"}
                 {language === "en" && "Register"}
                 {language === "es" && "Registrarse"}
@@ -100,6 +109,18 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
           </div>
         </>
       )}
+      {/* Auth modals */}
+      <AuthModal
+        open={authModal.open}
+        type={authModal.type}
+        onClose={() => setAuthModal({ ...authModal, open: false })}
+        onSubmit={(data) => {
+          // Hier komt straks de backend-koppeling
+          alert(JSON.stringify(data, null, 2));
+          setAuthModal({ ...authModal, open: false });
+        }}
+        language={language}
+      />
     </div>
   );
 }
