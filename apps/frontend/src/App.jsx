@@ -1,16 +1,105 @@
-import React from "react";
+
+import React, { useState, useEffect } from "react";
 import "./theme.css";
 
-export default function App() {
+const LANGUAGES = [
+  { code: "nl", label: "Nederlands", flag: "🇳🇱" },
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+];
+
+function LottoBall({ number, animate, isLojo, lojoLetter }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
-      <img src="/logo.svg" alt="LottoLoJo logo" className="w-32 mb-6 drop-shadow-lg" />
-      <h1 className="text-4xl font-extrabold text-green-900 mb-2">Lotto LoJo</h1>
-      <p className="text-lg text-yellow-800 mb-8">Speel samen. Win samen. Luxe, veilig en fun!</p>
-      <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md">
-        <p className="text-center text-green-700 font-semibold">Welkom bij de besloten Lotto voor vrienden!</p>
-        {/* Hier komen login, registratie, dashboard, etc. */}
+    <div
+      className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg mx-1 mb-2 transition-all duration-700 bg-gradient-to-br from-yellow-300 to-green-400 border-4 border-white drop-shadow-lg ${animate ? "animate-bounce" : ""}`}
+      style={{
+        animationDelay: `${Math.random() * 0.5}s`,
+      }}
+    >
+      {isLojo ? lojoLetter : number}
+    </div>
+  );
+}
+
+  const [showAnimation, setShowAnimation] = useState(true);
+  const [language, setLanguage] = useState("nl");
+  const [lojoPhase, setLojoPhase] = useState(false);
+
+  // Ballen: 10 stuks, 4-7 worden LOJO
+  const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
+  const lojoIndices = [3, 4, 5, 6];
+  const lojoLetters = ["L", "O", "J", "O"];
+
+  useEffect(() => {
+    // Start animatie, na 2.5s transformeren ballen 4-7 naar LOJO, na 4s animatie klaar
+    const lojoTimeout = setTimeout(() => setLojoPhase(true), 2500);
+    const endTimeout = setTimeout(() => setShowAnimation(false), 4000);
+    return () => {
+      clearTimeout(lojoTimeout);
+      clearTimeout(endTimeout);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300 relative">
+      {/* Taalwissel */}
+      <div className="absolute top-4 right-4 flex gap-2 z-20">
+        {LANGUAGES.map((lang) => (
+          <button
+            key={lang.code}
+            className={`text-2xl hover:scale-110 transition-transform ${language === lang.code ? "" : "opacity-60"}`}
+            onClick={() => setLanguage(lang.code)}
+            aria-label={lang.label}
+          >
+            {lang.flag}
+          </button>
+        ))}
       </div>
+
+      <img src="/logo.svg" alt="LottoLoJo logo" className="w-32 mb-6 drop-shadow-lg z-10" />
+      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10">Lotto LoJo</h1>
+
+      {/* Animatie */}
+      {showAnimation ? (
+        <div className="flex flex-row items-end justify-center h-32 mb-8 z-10">
+          {ballNumbers.map((num, i) => (
+            <LottoBall
+              key={i}
+              number={num}
+              animate={true}
+              isLojo={lojoPhase && lojoIndices.includes(i)}
+              lojoLetter={lojoPhase && lojoIndices.includes(i) ? lojoLetters[lojoIndices.indexOf(i)] : null}
+            />
+          ))}
+        </div>
+      ) : (
+        <>
+          <p className="text-lg text-yellow-800 mb-8 z-10">
+            {language === "nl" && "Speel samen. Win samen. Luxe, veilig en fun!"}
+            {language === "en" && "Play together. Win together. Luxury, safe and fun!"}
+            {language === "es" && "Juega juntos. Gana juntos. ¡Lujo, seguro y divertido!"}
+          </p>
+          <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
+            <p className="text-center text-green-700 font-semibold mb-4">
+              {language === "nl" && "Welkom bij de besloten Lotto voor vrienden!"}
+              {language === "en" && "Welcome to the private Lotto for friends!"}
+              {language === "es" && "¡Bienvenido a la Lotería privada para amigos!"}
+            </p>
+            <div className="flex flex-col gap-4">
+              <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all">
+                {language === "nl" && "Inloggen"}
+                {language === "en" && "Login"}
+                {language === "es" && "Iniciar sesión"}
+              </button>
+              <button className="bg-yellow-400 hover:bg-yellow-500 text-green-900 font-bold py-2 rounded transition-all">
+                {language === "nl" && "Registreren"}
+                {language === "en" && "Register"}
+                {language === "es" && "Registrarse"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
