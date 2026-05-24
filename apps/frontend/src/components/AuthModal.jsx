@@ -106,8 +106,12 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           })
         });
         if (res.ok) {
-          // Login succesvol
-          onSubmit(form);
+          setInfo("Succesvol ingelogd! Je wordt doorgestuurd...");
+          setTimeout(() => {
+            window.history.pushState({}, "", "/dashboard");
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            onSubmit && onSubmit(form);
+          }, 1000);
         } else {
           const data = await res.json();
           if (data.error === "E-mail nog niet geverifieerd.") {

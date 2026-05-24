@@ -98,23 +98,31 @@ export default function App() {
         onClick={handleLogoClick}
       />
 
-      {/* Feedback admin login */}
-      {showAdminHint && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-700 text-white px-4 py-2 rounded shadow z-50 animate-pulse">
-          Admin login geactiveerd!
+      {/* Admin login modal */}
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-xs relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-green-700"
+              onClick={() => setShowAdminModal(false)}
+              aria-label="Sluiten"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Admin Login</h2>
+            <AdminLogin onLogin={() => setShowAdminModal(false)} />
+          </div>
         </div>
       )}
         // Admin login via 5x klikken op logo
         const [logoClicks, setLogoClicks] = useState(0);
-        const [showAdminHint, setShowAdminHint] = useState(false);
+        const [showAdminModal, setShowAdminModal] = useState(false);
         function handleLogoClick() {
           setLogoClicks((prev) => {
             const next = prev + 1;
             if (next === 5) {
-              window.history.pushState({}, "", "/admin");
-              window.dispatchEvent(new PopStateEvent("popstate"));
-              setShowAdminHint(true);
-              setTimeout(() => setShowAdminHint(false), 2000);
+              setShowAdminModal(true);
+              setLogoClicks(0);
               return 0;
             }
             setTimeout(() => setLogoClicks(0), 2000);

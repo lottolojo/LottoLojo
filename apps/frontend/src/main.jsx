@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import AdminLogin from "./pages/AdminLogin";
 import ResetPassword from "./pages/ResetPassword";
+import Dashboard from "./pages/Dashboard";
 import "./index.css";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
 	}, []);
 	if (route === "/admin") return <AdminLogin />;
 	if (route === "/reset-password") return <ResetPassword />;
+	if (route === "/dashboard") return <Dashboard />;
 	return <App />;
 }
 
