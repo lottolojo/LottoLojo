@@ -24,11 +24,40 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
   );
 }
 
-export default function App() {
+import { useEffect, useState } from "react";
+
+function RulesModal({ open, onClose }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg relative">
+        <button
+          className="absolute top-2 right-2 text-gray-400 hover:text-green-700"
+          onClick={onClose}
+          aria-label="Sluiten"
+        >
+          ×
+        </button>
+        <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Spelregels Lotto LoJo</h2>
+        <div className="text-gray-800 text-base space-y-3">
+          <p>De trekking wordt gedaan door de Nederlandse Loterij. Na registratie kun je als deelnemer <b>10 unieke nummers</b> kiezen uit 1 t/m 45. Deze nummers worden als 10 ballen op je scherm getoond.</p>
+          <p>Elke zaterdagavond om <b>21:00 uur</b> vindt de trekking plaats. Er worden 6 winnende getallen getrokken uit 45 (het reservegetal telt niet mee).</p>
+          <p>Gevallen nummers worden als <span className="text-green-700 font-bold">groene ballen</span> getoond, nog niet gevallen nummers blijven grijs.</p>
+          <p>De deelnameprijs is <b>€2,50 per trekking</b>. De eerste trekking kan nooit een winnaar opleveren, zodat er direct een pot wordt opgebouwd. Van de totale pot wordt <b>15% aan de organisatie</b> toegekend, de rest wordt volledig uitgekeerd aan de winnaar(s).</p>
+          <p>Als admin zie je een lijst met alle deelnemers en hun gekozen getallen. Je kunt als admin de gevallen nummers invoeren; de app kleurt automatisch de juiste ballen groen en bepaalt wie er gewonnen heeft.</p>
+          <p>Een winnaar krijgt confetti en een felicitatie op het scherm. Iedereen ziet na de trekking of de Lotto is gevallen, door wie (of door meerdere personen tegelijk).</p>
+          <p>Na elke trekking kunnen deelnemers tot <b>13:00 uur 's middags vóór de nieuwe trekking</b> hun nummers aanpassen. Daarna en tussendoor is dat niet mogelijk.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
   const [showAnimation, setShowAnimation] = useState(true);
   const [language, setLanguage] = useState("nl");
   const [lojoPhase, setLojoPhase] = useState(false);
   const [authModal, setAuthModal] = useState({ open: false, type: "login" });
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // Ballen: 10 stuks, 4-7 worden LOJO
   const ballNumbers = [12, 7, 23, 4, 18, 9, 31, 5, 27, 14];
@@ -61,7 +90,23 @@ export default function App() {
         ))}
       </div>
 
-      <img src="/logo.svg" alt="LottoLoJo logo" className="w-32 mb-6 drop-shadow-lg z-10" />
+      <img
+        src="/logo.svg"
+        alt="LottoLoJo logo"
+        className="w-32 mb-6 drop-shadow-lg z-10 cursor-pointer"
+        onClick={(() => {
+          let clickCount = 0;
+          return function () {
+            clickCount++;
+            if (clickCount === 5) {
+              window.history.pushState({}, "", "/admin");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+              clickCount = 0;
+            }
+            setTimeout(() => { clickCount = 0; }, 2000);
+          };
+        })()}
+      />
       <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
         {language === "nl" && "Speel samen. Win samen. Doe mee!"}
@@ -132,9 +177,33 @@ export default function App() {
         onClose={() => setAuthModal({ ...authModal, open: false })}
         onSubmit={(data) => {
           setAuthModal({ ...authModal, open: false });
+          setLoggedIn(true);
         }}
         language={language}
       />
+
+      {/* Subtiele balk onderin na inloggen */}
+      {loggedIn && (
+        <div className="fixed bottom-0 left-0 w-full bg-white/80 border-t border-green-300 py-2 px-4 flex justify-center gap-6 text-green-800 text-sm z-50 shadow">
+          <a
+            href="#"
+            onClick={e => { e.preventDefault(); window.history.pushState({}, "", "/reset-password"); window.dispatchEvent(new PopStateEvent("popstate")); }}
+            className="underline hover:text-green-600"
+          >
+            Wachtwoord wijzigen
+          </a>
+          <span>|</span>
+          <a
+            href="#"
+            onClick={e => { e.preventDefault(); setShowRules(true); }}
+            className="underline hover:text-green-600"
+          >
+            Uitleg & spelregels
+          </a>
+        </div>
+      )}
+
+      <RulesModal open={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 }

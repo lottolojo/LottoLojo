@@ -1,3 +1,47 @@
+// Wachtwoord wijzigen: stap 1 (verzoek)
+router.post('/request-password-reset', async (req, res) => {
+  const { email } = req.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden.' });
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  await prisma.twoFactorCode.create({
+    data: {
+      userId: user.id,
+      codeHash: resetToken,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 30), // 30 min geldig
+    }
+  });
+  // Stuur e-mail
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+  try {
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: 'Wachtwoord wijzigen LottoLoJo',
+      html: `<p>Je hebt een verzoek gedaan om je wachtwoord te wijzigen. Klik op de onderstaande link om een nieuw wachtwoord in te stellen:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
+    });
+    res.json({ message: 'E-mail met reset-link verstuurd.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Kon geen e-mail sturen. Neem contact op.' });
+  }
+});
+
+// Wachtwoord wijzigen: stap 2 (uitvoeren)
+router.post('/reset-password', async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden.' });
+  const code = await prisma.twoFactorCode.findFirst({
+    where: { userId: user.id, codeHash: token, usedAt: null, expiresAt: { gt: new Date() } },
+  });
+  if (!code) return res.status(400).json({ error: 'Ongeldige of verlopen token.' });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: await bcrypt.hash(newPassword, 10) },
+  });
+  await prisma.twoFactorCode.update({ where: { id: code.id }, data: { usedAt: new Date() } });
+  res.json({ message: 'Wachtwoord succesvol aangepast' });
+});
 // Auth routes: login, register, password recovery, 2FA (basis)
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
