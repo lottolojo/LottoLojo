@@ -23,6 +23,7 @@ function LottoBall({ number, animate, isLojo, lojoLetter }) {
   );
 }
 
+export default function App() {
   const [showAnimation, setShowAnimation] = useState(true);
   const [language, setLanguage] = useState("nl");
   const [lojoPhase, setLojoPhase] = useState(false);
