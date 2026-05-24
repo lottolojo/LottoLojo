@@ -1,4 +1,24 @@
-// ...imports en initialisatie...
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'supergeheim';
+
+const router = express.Router();
+const prisma = new PrismaClient();
+
+// Nodemailer transporter (Gmail SMTP)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
 // Wachtwoord wijzigen: stap 1 (verzoek)
 router.post('/request-password-reset', async (req, res) => {
   const { email } = req.body;
