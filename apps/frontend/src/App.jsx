@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import "./theme.css";
 import AuthModal from "./components/AuthModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 const LANGUAGES = [
   { code: "nl", label: "Nederlands", flag: "🇳🇱" },
@@ -64,52 +65,66 @@ export default function App() {
       <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10">Lotto LoJo</h1>
 
       {/* Animatie */}
-      {showAnimation ? (
-        <div className="flex flex-row items-end justify-center h-32 mb-8 z-10">
-          {ballNumbers.map((num, i) => (
-            <LottoBall
-              key={i}
-              number={num}
-              animate={true}
-              isLojo={lojoPhase && lojoIndices.includes(i)}
-              lojoLetter={lojoPhase && lojoIndices.includes(i) ? lojoLetters[lojoIndices.indexOf(i)] : null}
-            />
-          ))}
-        </div>
-      ) : (
-        <>
-          <p className="text-lg text-yellow-800 mb-8 z-10">
-            {language === "nl" && "Speel samen. Win samen. Luxe, veilig en fun!"}
-            {language === "en" && "Play together. Win together. Luxury, safe and fun!"}
-            {language === "es" && "Juega juntos. Gana juntos. ¡Lujo, seguro y divertido!"}
-          </p>
-          <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
-            <p className="text-center text-green-700 font-semibold mb-4">
-              {language === "nl" && "Welkom bij de besloten Lotto voor vrienden!"}
-              {language === "en" && "Welcome to the private Lotto for friends!"}
-              {language === "es" && "¡Bienvenido a la Lotería privada para amigos!"}
+      <AnimatePresence mode="wait">
+        {showAnimation ? (
+          <motion.div
+            key="balls"
+            className="flex flex-row items-end justify-center h-32 mb-8 z-10"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            {ballNumbers.map((num, i) => (
+              <LottoBall
+                key={i}
+                number={num}
+                animate={true}
+                isLojo={lojoPhase && lojoIndices.includes(i)}
+                lojoLetter={lojoPhase && lojoIndices.includes(i) ? lojoLetters[lojoIndices.indexOf(i)] : null}
+              />
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <p className="text-lg text-yellow-800 mb-8 z-10">
+              {language === "nl" && "Speel samen. Win samen. veilig en fun, Doe mee!"}
+              {language === "en" && "Play together. Win together. Safe and fun, join us!"}
+              {language === "es" && "Juega juntos. Gana juntos. Seguro y divertido, ¡únete!"}
             </p>
-            <div className="flex flex-col gap-4">
-              <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
-                onClick={() => setAuthModal({ open: true, type: "login" })}
-              >
-                {language === "nl" && "Inloggen"}
-                {language === "en" && "Login"}
-                {language === "es" && "Iniciar sesión"}
-              </button>
-              <button
-                className="bg-yellow-400 hover:bg-yellow-500 text-green-900 font-bold py-2 rounded transition-all"
-                onClick={() => setAuthModal({ open: true, type: "register" })}
-              >
-                {language === "nl" && "Registreren"}
-                {language === "en" && "Register"}
-                {language === "es" && "Registrarse"}
-              </button>
+            <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
+              <p className="text-center text-green-700 font-semibold mb-4">
+                {language === "nl" && "Welkom bij de besloten Lotto voor vrienden!"}
+                {language === "en" && "Welcome to the private Lotto for friends!"}
+                {language === "es" && "¡Bienvenido a la Lotería privada para amigos!"}
+              </p>
+              <div className="flex flex-col gap-4">
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
+                  onClick={() => setAuthModal({ open: true, type: "login" })}
+                >
+                  {language === "nl" && "Inloggen"}
+                  {language === "en" && "Login"}
+                  {language === "es" && "Iniciar sesión"}
+                </button>
+                <button
+                  className="bg-yellow-400 hover:bg-yellow-500 text-green-900 font-bold py-2 rounded transition-all"
+                  onClick={() => setAuthModal({ open: true, type: "register" })}
+                >
+                  {language === "nl" && "Registreren"}
+                  {language === "en" && "Register"}
+                  {language === "es" && "Registrarse"}
+                </button>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Auth modals */}
       <AuthModal
         open={authModal.open}
