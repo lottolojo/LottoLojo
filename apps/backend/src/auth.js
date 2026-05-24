@@ -141,9 +141,6 @@ router.post('/register', async (req, res) => {
     if (err && err.response) msg += ' Mailserver: ' + err.response;
     res.status(500).json({ error: msg });
   }
-  } catch (err) {
-    res.status(500).json({ error: 'Kon geen e-mail sturen. Neem contact op.' });
-  }
 });
 
 // E-mailverificatie endpoint
