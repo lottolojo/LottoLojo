@@ -143,11 +143,11 @@ export default function App() {
           </div>
         </div>
       )}
-      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotto LoJo</h1>
+      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotjo</h1>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
-        {language === "nl" && "Speel samen. Win samen. Doe mee!"}
-        {language === "en" && "Play together. Win together. Join us!"}
-        {language === "es" && "Juega juntos. Gana juntos. ¡Únete!"}
+        {language === "nl" && "Speel samen. Win samen. Doe mee aan Lotjo!"}
+        {language === "en" && "Play together. Win together. Join Lotjo!"}
+        {language === "es" && "Juega juntos. Gana juntos. ¡Únete a Lotjo!"}
       </p>
 
       {/* Animatie of gekozen nummers */}
@@ -180,7 +180,7 @@ export default function App() {
           >
             <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
               <p className="text-center text-green-700 font-semibold mb-4">
-                Jouw gekozen nummers:
+                Jouw gekozen Lotjo nummers:
               </p>
               <div className="flex flex-row flex-wrap justify-center mb-4">
                 {userNumbers.map((num, i) => (
@@ -208,9 +208,9 @@ export default function App() {
           >
             <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
               <p className="text-center text-green-700 font-semibold mb-4">
-                {language === "nl" && "Welkom bij de besloten Lotto voor vrienden!"}
-                {language === "en" && "Welcome to the private Lotto for friends!"}
-                {language === "es" && "¡Bienvenido a la Lotería privada para amigos!"}
+                {language === "nl" && "Welkom bij de besloten Lotjo voor vrienden!"}
+                {language === "en" && "Welcome to the private Lotjo for friends!"}
+                {language === "es" && "¡Bienvenido a Lotjo privado para amigos!"}
               </p>
               <div className="flex flex-col gap-4">
                 <button

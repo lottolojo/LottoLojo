@@ -33,9 +33,13 @@ function Ball({ number, animate, delay }) {
 }
 
 export default function Dashboard() {
-  const [numbers, setNumbers] = useState(Array(10).fill(null));
+  // Haal bestaande nummers uit localStorage, zodat ze blijven na refresh/login
+  const stored = localStorage.getItem("lotto_numbers");
+  const initialNumbers = stored ? JSON.parse(stored) : Array(10).fill(null);
+  const [numbers, setNumbers] = useState(initialNumbers);
   const [showPicker, setShowPicker] = useState(false);
   const [selected, setSelected] = useState([]);
+  const [showSuccess, setShowSuccess] = useState(false);
   
   function handleSelect(num) {
     if (selected.includes(num)) {
@@ -50,8 +54,8 @@ export default function Dashboard() {
     const sorted = [...selected].sort((a, b) => a - b);
     setNumbers(sorted);
     setShowPicker(false);
-    // Sla op in localStorage zodat App.jsx ze kan tonen
     localStorage.setItem("lotto_numbers", JSON.stringify(sorted));
+    setShowSuccess(true);
   }
 
   function goToHome() {
@@ -61,18 +65,25 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
-      <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Jouw 10 Lotto LoJo nummers</h2>
+      <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Jouw 10 Lotjo nummers</h2>
       <div className="flex flex-row flex-wrap justify-center mb-6">
         {numbers.map((num, i) => (
           <Ball key={i} number={num} animate={!!num} delay={i * 0.15} />
         ))}
       </div>
-      <button
-        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
-        onClick={() => setShowPicker(true)}
-      >
-        Selecteer nummers
-      </button>
+      {/* Succesbericht na kiezen */}
+      {showSuccess && (
+        <div className="text-green-800 font-bold mb-2">Je hebt je nummers gekozen. Success!</div>
+      )}
+      {/* Selecteer-knop alleen tonen als nog niet gekozen */}
+      {!numbers.every(n => n !== null) && !showSuccess && (
+        <button
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
+          onClick={() => setShowPicker(true)}
+        >
+          Selecteer nummers
+        </button>
+      )}
       {/* Toon terugknop als er gekozen nummers zijn */}
       {numbers.every(n => n !== null) && (
         <button
