@@ -1,6 +1,3 @@
-// Prisma schema voor Lotto LoJo
-// Database: PostgreSQL
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,113 +8,113 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   // 'admin' of 'participant'
-  approved  Boolean  @default(false)
-  blocked   Boolean  @default(false)
-  twoFactorEnabled Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  profile   ParticipantProfile?
-  selections NumberSelection[]
-  entries   DrawEntry[]
-  payouts   Payout[]
-  twoFactorCodes TwoFactorCode[]
+  id               Int                 @id @default(autoincrement())
+  name             String
+  email            String              @unique
+  password         String
+  role             String
+  approved         Boolean             @default(false)
+  blocked          Boolean             @default(false)
+  twoFactorEnabled Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  entries          DrawEntry[]
+  selections       NumberSelection[]
+  profile          ParticipantProfile?
+  payouts          Payout[]
+  twoFactorCodes   TwoFactorCode[]
 }
 
 model ParticipantProfile {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int      @unique
-  creditsBalance Float @default(0)
-  active    Boolean @default(true)
-  unsubscribeAfterCurrentDraw Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                          Int      @id @default(autoincrement())
+  userId                      Int      @unique
+  creditsBalance              Float    @default(0)
+  active                      Boolean  @default(true)
+  unsubscribeAfterCurrentDraw Boolean  @default(false)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  user                        User     @relation(fields: [userId], references: [id])
 }
 
 model NumberSelection {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  numbers   Json
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  numbers         Json
   validFromDrawId Int
-  lockedAt  DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lockedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
 }
 
 model Draw {
-  id        Int      @id @default(autoincrement())
-  drawDate  DateTime
-  winningNumbers Json
-  reserveNumber Int?
-  published Boolean @default(false)
-  publishedAt DateTime?
-  createdAt DateTime @default(now())
-  entries   DrawEntry[]
+  id              Int              @id @default(autoincrement())
+  drawDate        DateTime
+  winningNumbers  Json
+  reserveNumber   Int?
+  published       Boolean          @default(false)
+  publishedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  entries         DrawEntry[]
+  payouts         Payout[]
   potTransactions PotTransaction[]
-  payouts   Payout[]
 }
 
 model DrawEntry {
-  id        Int      @id @default(autoincrement())
-  draw      Draw     @relation(fields: [drawId], references: [id])
-  drawId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
+  id              Int      @id @default(autoincrement())
+  drawId          Int
+  userId          Int
   selectedNumbers Json
-  paid      Boolean
-  entryFee  Float
-  participated Boolean
-  excludedReason String?
-  matches   Json
-  matchCount Int
-  isWinner  Boolean @default(false)
-  createdAt DateTime @default(now())
+  paid            Boolean
+  entryFee        Float
+  participated    Boolean
+  excludedReason  String?
+  matches         Json
+  matchCount      Int
+  isWinner        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  draw            Draw     @relation(fields: [drawId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
 }
 
 model Setting {
-  id        Int      @id @default(autoincrement())
-  entryFee  Float    @default(3)
-  organizerPercentage Float @default(0.25)
-  numberChangeDeadlineTime String @default("13:00")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                       Int      @id @default(autoincrement())
+  entryFee                 Float    @default(3)
+  organizerPercentage      Float    @default(0.25)
+  numberChangeDeadlineTime String   @default("13:00")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
 
 model PotTransaction {
-  id        Int      @id @default(autoincrement())
-  draw      Draw     @relation(fields: [drawId], references: [id])
-  drawId    Int
-  type      String
-  amount    Float
+  id          Int      @id @default(autoincrement())
+  drawId      Int
+  type        String
+  amount      Float
   description String?
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  draw        Draw     @relation(fields: [drawId], references: [id])
 }
 
 model Payout {
-  id        Int      @id @default(autoincrement())
-  draw      Draw     @relation(fields: [drawId], references: [id])
-  drawId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  grossPot  Float
+  id           Int      @id @default(autoincrement())
+  drawId       Int
+  userId       Int
+  grossPot     Float
   organizerFee Float
   payoutAmount Float
-  paidOut   Boolean @default(false)
-  createdAt DateTime @default(now())
+  paidOut      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  draw         Draw     @relation(fields: [drawId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model TwoFactorCode {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
+  id        Int       @id @default(autoincrement())
   userId    Int
   codeHash  String
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
 }
