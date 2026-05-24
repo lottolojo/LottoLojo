@@ -33,6 +33,7 @@ function Ball({ number, animate, delay }) {
 }
 
 export default function Dashboard() {
+  const [language] = useState(localStorage.getItem("lotto_lang") || "nl");
   // Haal bestaande nummers uit localStorage, zodat ze blijven na refresh/login
   const stored = localStorage.getItem("lotto_numbers");
   const initialNumbers = stored ? JSON.parse(stored) : Array(10).fill(null);
@@ -65,7 +66,11 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
-      <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">Jouw 10 Lotjo nummers</h2>
+      <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">
+        {language === "nl" && "Jouw 10 Lotjo nummers"}
+        {language === "en" && "Your 10 Lotjo numbers"}
+        {language === "es" && "Tus 10 números Lotjo"}
+      </h2>
       <div className="flex flex-row flex-wrap justify-center mb-6">
         {numbers.map((num, i) => (
           <Ball key={i} number={num} animate={!!num} delay={i * 0.15} />
@@ -73,30 +78,44 @@ export default function Dashboard() {
       </div>
       {/* Succesbericht na kiezen */}
       {showSuccess && (
-        <div className="text-green-800 font-bold mb-2">Je hebt je nummers gekozen. Success!</div>
+        <div className="text-green-800 font-bold mb-2">
+          {language === "nl" && "Je hebt je nummers gekozen. Succes!"}
+          {language === "en" && "You have chosen your numbers. Success!"}
+          {language === "es" && "¡Has elegido tus números. Éxito!"}
+        </div>
       )}
       {/* Selecteer-knop alleen tonen als nog niet gekozen */}
       {!numbers.every(n => n !== null) && !showSuccess && (
         <button
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
+          className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded text-base mb-4"
+          style={{ minWidth: 120 }}
           onClick={() => setShowPicker(true)}
         >
-          Selecteer nummers
+          {language === "nl" && "Selecteer nummers"}
+          {language === "en" && "Select numbers"}
+          {language === "es" && "Seleccionar números"}
         </button>
       )}
       {/* Toon terugknop als er gekozen nummers zijn */}
       {numbers.every(n => n !== null) && (
         <button
-          className="bg-yellow-500 hover:bg-yellow-600 text-green-900 font-bold py-2 px-4 rounded mb-2"
+          className="bg-yellow-500 hover:bg-yellow-600 text-green-900 font-semibold py-1 px-3 rounded text-base mb-2"
+          style={{ minWidth: 120 }}
           onClick={goToHome}
         >
-          Terug naar overzicht
+          {language === "nl" && "Terug naar overzicht"}
+          {language === "en" && "Back to overview"}
+          {language === "es" && "Volver al resumen"}
         </button>
       )}
       {showPicker && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg relative flex flex-col items-center">
-            <h3 className="text-xl font-bold mb-4 text-green-800">Kies 10 unieke nummers (1-45)</h3>
+            <h3 className="text-xl font-bold mb-4 text-green-800">
+              {language === "nl" && "Kies 10 unieke nummers (1-45)"}
+              {language === "en" && "Choose 10 unique numbers (1-45)"}
+              {language === "es" && "Elige 10 números únicos (1-45)"}
+            </h3>
             <div className="grid grid-cols-9 gap-2 mb-4">
               {Array.from({ length: 45 }, (_, i) => i + 1).map(num => (
                 <button
@@ -110,17 +129,22 @@ export default function Dashboard() {
               ))}
             </div>
             <button
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-2"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded text-base mt-2"
+              style={{ minWidth: 100 }}
               onClick={saveNumbers}
               disabled={selected.length !== 10}
             >
-              Opslaan
+              {language === "nl" && "Opslaan"}
+              {language === "en" && "Save"}
+              {language === "es" && "Guardar"}
             </button>
             <button
-              className="text-gray-500 underline mt-2"
+              className="text-gray-500 underline mt-2 text-base"
               onClick={() => setShowPicker(false)}
             >
-              Annuleren
+              {language === "nl" && "Annuleren"}
+              {language === "en" && "Cancel"}
+              {language === "es" && "Cancelar"}
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="60" cy="60" r="56" fill="url(#paint0_radial)" stroke="#FFD700" stroke-width="8"/>
-  <text x="60" y="72" text-anchor="middle" font-size="38" font-family="Arial Black, Arial, sans-serif" fill="#fff" font-weight="bold" letter-spacing="-2">LoJo</text>
+  <text x="60" y="72" text-anchor="middle" font-size="38" font-family="Arial Black, Arial, sans-serif" fill="#fff" font-weight="bold" letter-spacing="-2">LotJo</text>
   <defs>
     <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientTransform="translate(60 60) scale(56)">
       <stop stop-color="#43e97b"/>

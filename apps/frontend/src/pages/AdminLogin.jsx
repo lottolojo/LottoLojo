@@ -4,6 +4,7 @@ export default function AdminLogin({ onLogin }) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [language] = useState(localStorage.getItem("lotto_lang") || "nl");
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,16 +37,18 @@ export default function AdminLogin({ onLogin }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300">
-      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-xs relative">
+      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative">
         <h2 className="text-2xl font-bold mb-4 text-green-800 text-center">
-          Admin login
+          {language === "nl" && "Admin login"}
+          {language === "en" && "Admin login"}
+          {language === "es" && "Acceso admin"}
         </h2>
         {info && <div className="text-sm text-yellow-700 mb-2 text-center">{info}</div>}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input
             type="email"
             name="email"
-            placeholder="E-mailadres"
+            placeholder={language === "nl" ? "E-mailadres" : language === "en" ? "Email address" : "Correo electrónico"}
             value={form.email}
             onChange={handleChange}
             className="border rounded px-3 py-2"
@@ -54,7 +57,7 @@ export default function AdminLogin({ onLogin }) {
           <input
             type="password"
             name="password"
-            placeholder="Wachtwoord"
+            placeholder={language === "nl" ? "Wachtwoord" : language === "en" ? "Password" : "Contraseña"}
             value={form.password}
             onChange={handleChange}
             className="border rounded px-3 py-2"
@@ -62,10 +65,20 @@ export default function AdminLogin({ onLogin }) {
           />
           <button
             type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded mt-2"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-base mt-2"
             disabled={loading}
           >
-            {loading ? "Even wachten..." : "Inloggen"}
+            {loading
+              ? (language === "nl"
+                  ? "Even wachten..."
+                  : language === "en"
+                  ? "Please wait..."
+                  : "Espere...")
+              : language === "nl"
+              ? "Inloggen"
+              : language === "en"
+              ? "Login"
+              : "Entrar"}
           </button>
         </form>
       </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "./theme.css";
+const VERSION = "v1.0.0";
 import AdminLogin from "./pages/AdminLogin";
 import AuthModal from "./components/AuthModal";
 import { motion, AnimatePresence } from "framer-motion";
@@ -144,7 +145,8 @@ export default function App() {
           </div>
         </div>
       )}
-      <h1 className="text-4xl font-extrabold text-green-900 mb-2 z-10 text-center">Lotjo</h1>
+      {/* Alleen logo, geen tekst Lotjo direct onder logo */}
+      <div className="mb-2 z-10 text-center"></div>
       <p className="text-lg text-yellow-800 mb-8 z-10 text-center">
         {language === "nl" && "Speel samen. Win samen. Doe mee aan Lotjo!"}
         {language === "en" && "Play together. Win together. Join Lotjo!"}
@@ -181,7 +183,9 @@ export default function App() {
           >
             <div className="bg-white/80 rounded-xl shadow-xl p-8 w-full max-w-md z-10">
               <p className="text-center text-green-700 font-semibold mb-4">
-                Jouw gekozen Lotjo nummers:
+                {language === "nl" && "Jouw gekozen Lotjo nummers:"}
+                {language === "en" && "Your chosen Lotjo numbers:"}
+                {language === "es" && "Tus números Lotjo elegidos:"}
               </p>
               <div className="flex flex-row flex-wrap justify-center mb-4">
                 {userNumbers.map((num, i) => (
@@ -189,13 +193,16 @@ export default function App() {
                 ))}
               </div>
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded text-base transition-all"
+                style={{ minWidth: 120 }}
                 onClick={() => {
                   localStorage.removeItem("lotto_numbers");
                   window.location.reload();
                 }}
               >
-                Kies opnieuw
+                {language === "nl" && "Kies opnieuw"}
+                {language === "en" && "Choose again"}
+                {language === "es" && "Elegir de nuevo"}
               </button>
             </div>
           </motion.div>
@@ -211,8 +218,10 @@ export default function App() {
               <p className="text-center text-green-700 font-semibold mb-4">
                 {language === "nl" && "Welkom bij de besloten Lotjo voor vrienden!"}
                 {language === "en" && "Welcome to the private Lotjo for friends!"}
-                {language === "es" && "¡Bienvenido a Lotjo privado para amigos!"}
+                {language === "es" && "¡Bienvenido a la Lotjo privada para amigos!"}
               </p>
+                {/* Versienummer onderaan */}
+                <div className="fixed bottom-2 right-2 text-xs text-green-900/60 select-none z-50">{VERSION}</div>
               <div className="flex flex-col gap-4">
                 <button
                   className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all"
