@@ -9,15 +9,27 @@ export default function AdminPanel({ token }) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     fetch(`${API_URL}/admin/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data.error || `Fout: ${r.status}`);
+        }
+        return r.json();
+      })
       .then(data => {
+        if (!Array.isArray(data)) throw new Error("Ongeldige gebruikersdata ontvangen");
         setUsers(data);
         setLoading(false);
       })
-      .catch(() => setError("Kan gebruikers niet ophalen"));
+      .catch(e => {
+        setError(e.message || "Kan gebruikers niet ophalen");
+        setLoading(false);
+      });
   }, [token]);
 
   const setRole = async (userId, role) => {
@@ -53,6 +65,7 @@ export default function AdminPanel({ token }) {
   };
 
   if (loading) return <div>Gebruikers laden...</div>;
+  if (error) return <div className="text-red-700 font-bold p-4">{error}</div>;
   return (
     <div className="max-w-2xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">Admin Panel</h2>
