@@ -178,6 +178,7 @@ export default function Dashboard() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
   const [credits, setCredits] = useState(null);
+  const [pot, setPot] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
 
   // Draw & reveal state
@@ -206,8 +207,12 @@ export default function Dashboard() {
   useEffect(() => {
     const token = localStorage.getItem("lotto_token");
     if (!token) return;
-    fetch(import.meta.env.VITE_API_URL + "/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    const headers = { Authorization: `Bearer ${token}` };
+    const api = import.meta.env.VITE_API_URL;
+    fetch(api + "/auth/me", { headers })
       .then(r => r.json()).then(d => { if (typeof d.credits === "number") setCredits(d.credits); }).catch(() => {});
+    fetch(api + "/auth/pot", { headers })
+      .then(r => r.json()).then(d => { if (typeof d.potTotal === "number") setPot(d); }).catch(() => {});
   }, []);
 
   // Haal nummers op
@@ -416,6 +421,48 @@ export default function Dashboard() {
           </>}
           {credits > 2 && <div>{language === "es" ? `💳 Créditos: ${credits}` : `💳 Credits: ${credits}`}</div>}
         </div>
+      )}
+
+      {/* Pot display */}
+      {pot !== null && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full max-w-sm mb-4"
+        >
+          <div className="relative overflow-hidden rounded-2xl shadow-xl border-2 border-yellow-400 bg-gradient-to-br from-yellow-400 via-yellow-300 to-amber-400">
+            {/* Glinstering overlay */}
+            <motion.div
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ duration: 2.8, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }}
+              className="absolute inset-0 w-1/3 bg-white/30 skew-x-[-20deg] pointer-events-none"
+            />
+            <div className="relative px-5 py-4 text-center">
+              <div className="text-xs font-bold uppercase tracking-widest text-yellow-800/70 mb-1">
+                {language === "nl" ? "🏆 Huidige Jackpot" : language === "en" ? "🏆 Current Jackpot" : "🏆 Bote Actual"}
+              </div>
+              <motion.div
+                key={pot.potTotal}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.4, type: "spring", stiffness: 200 }}
+                className="text-4xl font-black text-green-900 tracking-tight drop-shadow"
+              >
+                {pot.potTotal === 0
+                  ? (language === "nl" ? "Nog geen pot" : language === "en" ? "No pot yet" : "Sin bote aún")
+                  : `€ ${pot.potTotal.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                }
+              </motion.div>
+              {pot.potTotal > 0 && (
+                <div className="flex justify-center gap-4 mt-2 text-xs text-green-900/70 font-semibold">
+                  <span>🏅 {language === "nl" ? "Winnaar" : language === "en" ? "Winner" : "Ganador"}: <span className="text-green-800 font-bold">€ {pot.winnerShare.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                  <span>❤️ {language === "nl" ? "Goed doel" : language === "en" ? "Charity" : "Caridad"}: <span className="text-red-700 font-bold">€ {pot.orgShare.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
       )}
 
       <h2 className="text-2xl font-bold mb-2 text-green-800 text-center">

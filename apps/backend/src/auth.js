@@ -125,6 +125,15 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
   res.json(users);
 });
 
+// Deelnemer: pot totaal ophalen (ingelogde gebruiker)
+router.get('/pot', requireAuth, async (req, res) => {
+  const transactions = await prisma.potTransaction.findMany();
+  const potTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const settings = await prisma.setting.findFirst();
+  const orgPct = settings?.organizationPercentage ?? 15;
+  res.json({ potTotal, winnerShare: potTotal * (1 - orgPct / 100), orgShare: potTotal * (orgPct / 100) });
+});
+
 // Admin: pot totaal berekenen
 router.get('/admin/pot', requireAdmin, async (req, res) => {
   const transactions = await prisma.potTransaction.findMany();
