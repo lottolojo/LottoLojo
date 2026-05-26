@@ -59,6 +59,10 @@ const T = {
     settingsInputMode: "Invoermodus credits",
     settingsInputCredits: "Credits",
     settingsInputMoney: "Geld",
+    settingsSimulatedParticipants: "Fictieve deelnemers (zonder registratie)",
+    settingsSimulatedHint: "Deze deelnemers tellen altijd mee bij elke trekking. Bij 0 geen extra potbijdrage.",
+    settingsSimulatedPreview: (n, sym, price) => `Per trekking: +${sym}${(n * price).toFixed(2)} extra in de pot`,
+    potSimulatedActive: (n) => `${n} fictieve deelnemer${n !== 1 ? 's' : ''} actief`,
     creditsPreviewMoney: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/stuk)`,
     creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   },
@@ -111,6 +115,10 @@ const T = {
     settingsInputMode: "Credits input mode",
     settingsInputCredits: "Credits",
     settingsInputMoney: "Money",
+    settingsSimulatedParticipants: "Simulated participants (no registration)",
+    settingsSimulatedHint: "These always join every draw. At 0, no extra pot contribution.",
+    settingsSimulatedPreview: (n, sym, price) => `Per draw: +${sym}${(n * price).toFixed(2)} extra to the pot`,
+    potSimulatedActive: (n) => `${n} simulated participant${n !== 1 ? 's' : ''} active`,
     creditsPreviewMoney: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/each)`,
     creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   },
@@ -163,6 +171,10 @@ const T = {
     settingsInputMode: "Modo de entrada créditos",
     settingsInputCredits: "Créditos",
     settingsInputMoney: "Dinero",
+    settingsSimulatedParticipants: "Participantes ficticios (sin registro)",
+    settingsSimulatedHint: "Siempre participan en cada sorteo. Con 0, no hay aporte extra al bote.",
+    settingsSimulatedPreview: (n, sym, price) => `Por sorteo: +${sym}${(n * price).toFixed(2)} extra al bote`,
+    potSimulatedActive: (n) => `${n} participante${n !== 1 ? 's' : ''} ficticio${n !== 1 ? 's' : ''} activo${n !== 1 ? 's' : ''}`,
     creditsPreviewMoney: (n, sym, price) => `= ${n} crédito${n !== 1 ? 's' : ''} (${sym}${price}/c/u)`,
     creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   }
@@ -197,10 +209,10 @@ export default function AdminPanel({ token }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const [settings, setSettings] = useState({ creditPrice: 2.50, orgPercentage: 0.15 });
+  const [settings, setSettings] = useState({ creditPrice: 2.50, orgPercentage: 0.15, simulatedParticipants: 0 });
   const [currency, setCurrencyState] = useState(localStorage.getItem("lotto_currency") || "EUR");
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ creditPrice: '', orgPercentage: '', currency: '' });
+  const [settingsForm, setSettingsForm] = useState({ creditPrice: '', orgPercentage: '', currency: '', simulatedParticipants: '' });
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   const [creditsInputMode, setCreditsInputMode] = useState(localStorage.getItem("lotto_credits_mode") || "money");
@@ -242,7 +254,7 @@ export default function AdminPanel({ token }) {
       if (settingsRes.ok) {
         const s = await settingsRes.json();
         setSettings(s);
-        setSettingsForm({ creditPrice: s.creditPrice, orgPercentage: Math.round(s.orgPercentage * 100), currency: localStorage.getItem("lotto_currency") || "EUR" });
+        setSettingsForm({ creditPrice: s.creditPrice, orgPercentage: Math.round(s.orgPercentage * 100), currency: localStorage.getItem("lotto_currency") || "EUR", simulatedParticipants: s.simulatedParticipants ?? 0 });
       }
     } catch (e) {
       setError(e.message || "Laden mislukt");
@@ -325,12 +337,13 @@ export default function AdminPanel({ token }) {
     setSettingsLoading(true); setError(""); setSuccess("");
     const creditPrice = parseFloat(settingsForm.creditPrice);
     const orgPercentage = parseFloat(settingsForm.orgPercentage) / 100;
-    if (isNaN(creditPrice) || creditPrice <= 0 || isNaN(orgPercentage) || orgPercentage < 0 || orgPercentage > 1) {
+    const simulatedParticipants = parseInt(settingsForm.simulatedParticipants, 10) || 0;
+    if (isNaN(creditPrice) || creditPrice <= 0 || isNaN(orgPercentage) || orgPercentage < 0 || orgPercentage > 1 || simulatedParticipants < 0) {
       setError("Ongeldige instellingen."); setSettingsLoading(false); return;
     }
     const res = await fetch(`${API_URL}/admin/settings`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ creditPrice, orgPercentage })
+      body: JSON.stringify({ creditPrice, orgPercentage, simulatedParticipants })
     });
     const data = await res.json();
     setSettingsLoading(false);
@@ -486,6 +499,18 @@ export default function AdminPanel({ token }) {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t.settingsSimulatedParticipants}</label>
+                  <input type="number" min="0" step="1" value={settingsForm.simulatedParticipants}
+                    onChange={e => setSettingsForm(f => ({ ...f, simulatedParticipants: e.target.value }))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-400"/>
+                  <p className="text-xs text-gray-500 mt-1">{t.settingsSimulatedHint}</p>
+                  {parseInt(settingsForm.simulatedParticipants, 10) > 0 && !isNaN(parseFloat(settingsForm.creditPrice)) && (
+                    <p className="text-xs text-green-700 font-semibold mt-1">
+                      {t.settingsSimulatedPreview(parseInt(settingsForm.simulatedParticipants, 10), sym, parseFloat(settingsForm.creditPrice))}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 mt-5">
                 <button onClick={saveSettings} disabled={settingsLoading}
@@ -589,9 +614,16 @@ export default function AdminPanel({ token }) {
           <div className="bg-white/90 rounded-xl shadow-xl p-5">
             <h2 className="text-lg font-bold text-green-800 mb-2">{t.potSection}</h2>
             {potInfo ? (
-              <div className="text-3xl font-extrabold text-green-700">
-                {sym}{potInfo.potTotal.toFixed(2)}
-              </div>
+              <>
+                <div className="text-3xl font-extrabold text-green-700">
+                  {sym}{potInfo.potTotal.toFixed(2)}
+                </div>
+                {(settings.simulatedParticipants ?? 0) > 0 && (
+                  <p className="text-xs text-green-700/80 mt-2 font-semibold">
+                    👥 {t.potSimulatedActive(settings.simulatedParticipants)} — {t.settingsSimulatedPreview(settings.simulatedParticipants, sym, settings.creditPrice)}
+                  </p>
+                )}
+              </>
             ) : <p className="text-gray-500 text-sm">{t.loading}</p>}
           </div>
 

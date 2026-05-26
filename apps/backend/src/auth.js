@@ -17,6 +17,23 @@ async function sendMail({ to, subject, text, html }) {
   await sgMail.send({ from, to, subject, text, html });
 }
 
+function calcPotContribution(realCount, simulatedCount, creditPrice) {
+  const real = realCount * creditPrice;
+  const simulated = Math.max(0, simulatedCount || 0) * creditPrice;
+  return {
+    potAmount: real + simulated,
+    realCount,
+    simulatedCount: Math.max(0, simulatedCount || 0),
+    totalCount: realCount + Math.max(0, simulatedCount || 0),
+  };
+}
+
+function potDescription(prefix, date, realCount, simulatedCount, creditPrice) {
+  const parts = [`${realCount} geregistreerd`];
+  if (simulatedCount > 0) parts.push(`${simulatedCount} fictief`);
+  return `${prefix} ${date}: ${parts.join(' + ')} × ${creditPrice}`;
+}
+
 // Middleware: authenticatie met JWT
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
@@ -242,21 +259,25 @@ router.get('/admin/settings', requireAdmin, async (req, res) => {
   if (!s) {
     s = await prisma.setting.create({ data: { entryFee: 2.50, organizerPercentage: 0.15 } });
   }
-  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage });
+  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage, simulatedParticipants: s.simulatedParticipants ?? 0 });
 });
 
 // Admin: instellingen opslaan
 router.post('/admin/settings', requireAdmin, async (req, res) => {
-  const { creditPrice, orgPercentage } = req.body;
+  const { creditPrice, orgPercentage, simulatedParticipants } = req.body;
   if (typeof creditPrice !== 'number' || creditPrice <= 0) return res.status(400).json({ error: 'Ongeldige creditprijs' });
   if (typeof orgPercentage !== 'number' || orgPercentage < 0 || orgPercentage > 1) return res.status(400).json({ error: 'Ongeldig percentage (0–1)' });
+  const simCount = simulatedParticipants ?? 0;
+  if (typeof simCount !== 'number' || simCount < 0 || !Number.isInteger(simCount)) {
+    return res.status(400).json({ error: 'Fictieve deelnemers moet een geheel getal ≥ 0 zijn' });
+  }
   let s = await prisma.setting.findFirst();
   if (!s) {
-    s = await prisma.setting.create({ data: { entryFee: creditPrice, organizerPercentage: orgPercentage } });
+    s = await prisma.setting.create({ data: { entryFee: creditPrice, organizerPercentage: orgPercentage, simulatedParticipants: simCount } });
   } else {
-    s = await prisma.setting.update({ where: { id: s.id }, data: { entryFee: creditPrice, organizerPercentage: orgPercentage } });
+    s = await prisma.setting.update({ where: { id: s.id }, data: { entryFee: creditPrice, organizerPercentage: orgPercentage, simulatedParticipants: simCount } });
   }
-  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage });
+  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage, simulatedParticipants: s.simulatedParticipants ?? 0 });
 });
 
 // Admin: credits toevoegen op basis van een betaald bedrag (bedrag ÷ creditprijs = credits)
@@ -300,6 +321,7 @@ router.post('/admin/draw', requireAdmin, async (req, res) => {
     // Haal creditprijs op uit instellingen
     const s = await prisma.setting.findFirst();
     const creditPrice = s?.entryFee ?? 2.50;
+    const simulatedCount = s?.simulatedParticipants ?? 0;
 
     const draw = await prisma.draw.create({
       data: { drawDate: targetDate, winningNumbers, published: true }
@@ -315,18 +337,18 @@ router.post('/admin/draw', requireAdmin, async (req, res) => {
       )
     );
 
-    // Registreer de potbijdrage voor deze trekking
-    const potAmount = activeProfiles.length * creditPrice;
-    if (potAmount > 0) {
+    // Registreer de potbijdrage voor deze trekking (geregistreerd + fictief)
+    const pot = calcPotContribution(activeProfiles.length, simulatedCount, creditPrice);
+    if (pot.potAmount > 0) {
       await prisma.potTransaction.create({
         data: {
-          drawId: draw.id, type: 'draw', amount: potAmount,
-          description: `Trekking ${draw.drawDate.toISOString().slice(0,10)}: ${activeProfiles.length} deelnemers × ${creditPrice}`
+          drawId: draw.id, type: 'draw', amount: pot.potAmount,
+          description: potDescription('Trekking', draw.drawDate.toISOString().slice(0, 10), pot.realCount, pot.simulatedCount, creditPrice)
         }
       });
     }
 
-    res.json({ ...draw, creditsDeducted: activeProfiles.length, potAmount });
+    res.json({ ...draw, creditsDeducted: activeProfiles.length, potAmount: pot.potAmount, simulatedParticipants: pot.simulatedCount, totalParticipants: pot.totalCount });
   } catch (e) {
     console.error('Fout bij aanmaken trekking:', e);
     res.status(500).json({ error: 'Trekking aanmaken mislukt.' });
@@ -704,6 +726,7 @@ router.post('/admin/run-cron-now', requireAdmin, async (req, res) => {
     if (existing) return res.status(409).json({ error: `Trekking al aanwezig voor ${date}` });
     const s = await prisma.setting.findFirst();
     const creditPrice = s?.entryFee ?? 2.50;
+    const simulatedCount = s?.simulatedParticipants ?? 0;
     const draw = await prisma.draw.create({
       data: { drawDate: new Date(date + 'T12:00:00'), winningNumbers: numbers, published: true, publishedAt: new Date() }
     });
@@ -711,14 +734,14 @@ router.post('/admin/run-cron-now', requireAdmin, async (req, res) => {
     await Promise.all(activeProfiles.map(p =>
       prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
     ));
-    const potAmount = activeProfiles.length * creditPrice;
-    if (potAmount > 0) {
+    const pot = calcPotContribution(activeProfiles.length, simulatedCount, creditPrice);
+    if (pot.potAmount > 0) {
       await prisma.potTransaction.create({
-        data: { drawId: draw.id, type: 'draw', amount: potAmount,
-          description: `Sim-trekking ${date}: ${activeProfiles.length} deelnemers × ${creditPrice}` }
+        data: { drawId: draw.id, type: 'draw', amount: pot.potAmount,
+          description: potDescription('Sim-trekking', date, pot.realCount, pot.simulatedCount, creditPrice) }
       });
     }
-    res.json({ ok: true, date, numbers, participants: activeProfiles.length, potAdded: potAmount });
+    res.json({ ok: true, date, numbers, participants: pot.realCount, simulatedParticipants: pot.simulatedCount, potAdded: pot.potAmount });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -737,6 +760,7 @@ cron.schedule('5 21 * * 6', async () => {
     if (existing) { console.log('[Cron] Trekking al aanwezig voor', date); return; }
     const s = await prisma.setting.findFirst();
     const creditPrice = s?.entryFee ?? 2.50;
+    const simulatedCount = s?.simulatedParticipants ?? 0;
     const draw = await prisma.draw.create({
       data: { drawDate: new Date(date + 'T12:00:00'), winningNumbers: numbers, published: true, publishedAt: new Date() }
     });
@@ -744,14 +768,14 @@ cron.schedule('5 21 * * 6', async () => {
     await Promise.all(activeProfiles.map(p =>
       prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
     ));
-    const potAmount = activeProfiles.length * creditPrice;
-    if (potAmount > 0) {
+    const pot = calcPotContribution(activeProfiles.length, simulatedCount, creditPrice);
+    if (pot.potAmount > 0) {
       await prisma.potTransaction.create({
-        data: { drawId: draw.id, type: 'draw', amount: potAmount,
-          description: `Auto-trekking ${date}: ${activeProfiles.length} deelnemers × ${creditPrice}` }
+        data: { drawId: draw.id, type: 'draw', amount: pot.potAmount,
+          description: potDescription('Auto-trekking', date, pot.realCount, pot.simulatedCount, creditPrice) }
       });
     }
-    console.log(`[Cron] ✅ Trekking gepubliceerd: ${date} – ${numbers.join(', ')} – ${activeProfiles.length} deelnemers`);
+    console.log(`[Cron] ✅ Trekking gepubliceerd: ${date} – ${numbers.join(', ')} – ${pot.realCount} geregistreerd + ${pot.simulatedCount} fictief`);
   } catch (e) {
     console.error('[Cron] Fout bij automatische trekking:', e.message);
   }
