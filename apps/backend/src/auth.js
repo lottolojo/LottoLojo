@@ -401,34 +401,65 @@ router.post('/reset-password', async (req, res) => {
 });
 
 
-// Registratie met e-mailverificatie
+// Registratie met 6-cijferige verificatiecode per e-mail
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Vul alle velden in.' });
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return res.status(400).json({ error: 'Gebruiker bestaat al.' });
   const hash = await bcrypt.hash(password, 10);
-  // Genereer verificatiecode
-  const verifyToken = crypto.randomBytes(32).toString('hex');
-  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`;
   const user = await prisma.user.create({
     data: { name, email, password: hash, role: 'participant', approved: false }
+  });
+  // Genereer 6-cijferige code (100000–999999)
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minuten geldig
+  await prisma.twoFactorCode.create({
+    data: { userId: user.id, codeHash: code, expiresAt }
   });
   try {
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: email,
-      subject: 'Bevestig je registratie',
-      text: `Klik op de volgende link om je account te activeren: ${verifyUrl}`,
-      html: `<p>Klik op de volgende link om je account te activeren:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`
+      subject: 'LottoLoJo — Verificatiecode',
+      text: `Jouw verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
+      html: `
+        <div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px;border-radius:12px;border:1px solid #e5e7eb;">
+          <h2 style="color:#166534;">🎱 LottoLoJo</h2>
+          <p>Hallo ${name},</p>
+          <p>Gebruik de onderstaande code om je registratie te bevestigen:</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;color:#166534;padding:16px 0;">${code}</div>
+          <p style="color:#6b7280;font-size:13px;">Deze code is 30 minuten geldig. Deel deze code niet met anderen.</p>
+        </div>`
     });
-    res.json({ message: 'Registratie gelukt! Check je e-mail.' });
+    res.json({ message: 'Registratie gelukt! Voer de verificatiecode in die je per e-mail hebt ontvangen.' });
   } catch (err) {
     console.error('Mailfout bij registratie:', err);
-    let msg = 'Kon geen e-mail sturen. Controleer of het mailadres klopt of neem contact op.';
-    if (err && err.response) msg += ' Mailserver: ' + err.response;
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: 'Kon geen verificatie-e-mail sturen. Controleer het e-mailadres.' });
   }
+});
+
+// Verificatiecode invoeren na registratie
+router.post('/verify-email-code', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: 'E-mail en code zijn verplicht.' });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(400).json({ error: 'Gebruiker niet gevonden.' });
+  if (user.approved) return res.status(400).json({ error: 'Account is al geverifieerd.' });
+  const record = await prisma.twoFactorCode.findFirst({
+    where: { userId: user.id, codeHash: String(code), usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' }
+  });
+  if (!record) return res.status(400).json({ error: 'Ongeldige of verlopen code. Probeer opnieuw.' });
+  await prisma.user.update({ where: { id: user.id }, data: { approved: true } });
+  await prisma.twoFactorCode.update({ where: { id: record.id }, data: { usedAt: new Date() } });
+  // Maak meteen een profiel aan
+  await prisma.participantProfile.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: { userId: user.id, creditsBalance: 0, active: true }
+  });
+  res.json({ message: 'E-mail geverifieerd! Je kunt nu inloggen.' });
 });
 
 // E-mailverificatie endpoint
@@ -582,6 +613,36 @@ router.post('/admin/publish-draw/:drawId', requireAdmin, async (req, res) => {
   if (isNaN(drawId)) return res.status(400).json({ error: 'Ongeldig drawId' });
   const draw = await prisma.draw.update({ where: { id: drawId }, data: { published: true, publishedAt: new Date() } });
   res.json(draw);
+});
+
+// Admin: handmatig de cron-logica triggeren (voor testen)
+router.post('/admin/run-cron-now', requireAdmin, async (req, res) => {
+  try {
+    const { date, numbers } = await fetchLottoResults();
+    const dayStart = new Date(date + 'T00:00:00');
+    const dayEnd   = new Date(date + 'T23:59:59');
+    const existing = await prisma.draw.findFirst({ where: { drawDate: { gte: dayStart, lte: dayEnd } } });
+    if (existing) return res.status(409).json({ error: `Trekking al aanwezig voor ${date}` });
+    const s = await prisma.setting.findFirst();
+    const creditPrice = s?.entryFee ?? 2.50;
+    const draw = await prisma.draw.create({
+      data: { drawDate: new Date(date + 'T12:00:00'), winningNumbers: numbers, published: true, publishedAt: new Date() }
+    });
+    const activeProfiles = await prisma.participantProfile.findMany({ where: { active: true, creditsBalance: { gt: 0 } } });
+    await Promise.all(activeProfiles.map(p =>
+      prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
+    ));
+    const potAmount = activeProfiles.length * creditPrice;
+    if (potAmount > 0) {
+      await prisma.potTransaction.create({
+        data: { drawId: draw.id, type: 'draw', amount: potAmount,
+          description: `Sim-trekking ${date}: ${activeProfiles.length} deelnemers × ${creditPrice}` }
+      });
+    }
+    res.json({ ok: true, date, numbers, participants: activeProfiles.length, potAdded: potAmount });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Cron: elke zaterdag om 21:05 automatisch de trekking ophalen en DIRECT publiceren
