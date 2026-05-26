@@ -475,6 +475,33 @@ router.post('/register', async (req, res) => {
   });
 });
 
+// Nieuwe verificatiecode sturen (alleen e-mail nodig)
+router.post('/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-mail verplicht.' });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden.' });
+  if (user.approved) return res.status(400).json({ error: 'Account is al geverifieerd. Je kunt inloggen.' });
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  await prisma.twoFactorCode.create({ data: { userId: user.id, codeHash: code, expiresAt } });
+  let emailOk = false;
+  try {
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER, to: email,
+      subject: 'LottoLoJo — Nieuwe verificatiecode',
+      text: `Jouw nieuwe verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
+      html: `<div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px;border-radius:12px;border:1px solid #e5e7eb;">
+        <h2 style="color:#166534;">🎱 LottoLoJo</h2>
+        <p>Nieuwe verificatiecode:</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;color:#166534;padding:16px 0;">${code}</div>
+        <p style="color:#6b7280;font-size:13px;">Geldig voor 30 minuten.</p></div>`
+    });
+    emailOk = true;
+  } catch (err) { console.error('Mailfout resend:', err.message); }
+  res.json({ message: emailOk ? 'Nieuwe code verstuurd!' : 'Code aangemaakt, mail mislukt.', emailSent: emailOk, ...(!emailOk && { devCode: code }) });
+});
+
 // Verificatiecode invoeren na registratie
 router.post('/verify-email-code', async (req, res) => {
   const { email, code } = req.body;

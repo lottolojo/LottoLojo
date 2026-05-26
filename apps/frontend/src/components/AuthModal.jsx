@@ -248,11 +248,20 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
             <p className="text-xs text-gray-400">{l.noCodeYet}{" "}
               <span className="text-green-600 cursor-pointer underline"
                 onClick={async () => {
-                  const res = await fetch(`${API_URL}/register`, {
-                    method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: form.name, email: registeredEmail, password: form.password })
-                  });
-                  if (res.ok) { setInfoType("ok"); setInfo("Nieuwe code verstuurd!"); }
+                  try {
+                    const res = await fetch(`${API_URL}/resend-verification`, {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: registeredEmail })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      if (!data.emailSent && data.devCode) {
+                        setInfoType("warn"); setInfo(`⚠️ Mail mislukt. Code: ${data.devCode}`);
+                      } else {
+                        setInfoType("ok"); setInfo("✅ Nieuwe code verstuurd! Check je inbox.");
+                      }
+                    } else { setInfoType("err"); setInfo(data.error || "Mislukt."); }
+                  } catch { setInfoType("err"); setInfo("Netwerkfout."); }
                 }}>
                 {l.resendCode}
               </span>
