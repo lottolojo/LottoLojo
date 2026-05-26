@@ -4,24 +4,24 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import * as cheerio from 'cheerio';
 import cron from 'node-cron';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supergeheim';
 const router = express.Router();
 const prisma = new PrismaClient();
-// Nodemailer transporter (Gmail SMTP)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-  connectionTimeout: 8000,
-  greetingTimeout: 8000,
-  socketTimeout: 8000,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendMail({ to, subject, text, html }) {
+  await resend.emails.send({
+    from: 'LottoLoJo <onboarding@resend.dev>',
+    to,
+    subject,
+    text,
+    html,
+  });
+}
 
 // Middleware: authenticatie met JWT
 function requireAuth(req, res, next) {
@@ -377,8 +377,7 @@ router.post('/request-password-reset', async (req, res) => {
   // Stuur e-mail
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
   try {
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
+    await sendMail({
       to: email,
       subject: 'Wachtwoord wijzigen LottoLoJo',
       html: `<p>Je hebt een verzoek gedaan om je wachtwoord te wijzigen. Klik op de onderstaande link om een nieuw wachtwoord in te stellen:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
@@ -419,8 +418,8 @@ router.post('/register', async (req, res) => {
     await prisma.twoFactorCode.create({ data: { userId: existing.id, codeHash: code, expiresAt } });
     let emailOk2 = false;
     try {
-      await transporter.sendMail({
-        from: process.env.GMAIL_USER, to: email,
+      await sendMail({
+        to: email,
         subject: 'LottoLoJo — Nieuwe verificatiecode',
         text: `Jouw verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
         html: `<div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px;border-radius:12px;border:1px solid #e5e7eb;">
@@ -450,8 +449,7 @@ router.post('/register', async (req, res) => {
   });
   let emailOk = false;
   try {
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
+    await sendMail({
       to: email,
       subject: 'LottoLoJo — Verificatiecode',
       text: `Jouw verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
@@ -490,8 +488,8 @@ router.post('/resend-verification', async (req, res) => {
   await prisma.twoFactorCode.create({ data: { userId: user.id, codeHash: code, expiresAt } });
   let emailOk = false;
   try {
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER, to: email,
+    await sendMail({
+      to: email,
       subject: 'LottoLoJo — Nieuwe verificatiecode',
       text: `Jouw nieuwe verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
       html: `<div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px;border-radius:12px;border:1px solid #e5e7eb;">
