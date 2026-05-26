@@ -4,6 +4,14 @@ const API_URL = import.meta.env.VITE_API_URL + "/auth";
 
 const FLAGS = { nl: "🇳🇱", en: "🇬🇧", es: "🇪🇸" };
 
+const CURRENCIES = {
+  EUR: { symbol: '€', name: 'Euro (€)' },
+  USD: { symbol: '$', name: 'US Dollar ($)' },
+  GBP: { symbol: '£', name: 'British Pound (£)' },
+  COP: { symbol: '$', name: 'Peso Colombiano ($)' },
+  MXN: { symbol: '$', name: 'Peso Mexicano ($)' },
+};
+
 const T = {
   nl: {
     title: "Admin Panel", subtitle: "Deelnemersbeheer",
@@ -14,13 +22,13 @@ const T = {
     drawNumbersLabel: "6 winnende nummers (1–45)",
     saveDraw: "Trekking opslaan",
     recentDraws: "Recente trekkingen",
-    published: "Gepubliceerd", concept: "Concept",
+    published: "✅ Gepubliceerd", concept: "📝 Concept",
     potSection: "💰 Huidige pot",
     winnerSection: "🏆 Winnaar",
     winnerNumbers: "Nummers:",
     winnerContact: "⚠️ Neem contact op met de winnaar!",
     noWinner: "Nog geen winnaar.",
-    winnerPayout: (w, o) => `Winnaar: €${w} — Organisatie 15%: €${o}`,
+    winnerPayout: (sym, w, o, pct) => `Winnaar: ${sym}${w} — Organisatie ${pct}%: ${sym}${o}`,
     resetSection: "♻️ Lotto resetten",
     resetWarning: "Dit wist alle trekkingen en de pot. Deelnemers behouden hun nummers. Niet ongedaan te maken!",
     resetBtn: "Lotto resetten", confirmReset: "Zeker weten?", yesReset: "Ja, reset", cancel: "Annuleren",
@@ -31,13 +39,22 @@ const T = {
     approve: "✅ Goedkeuren", unblock: "🔓 Deblokkeren", block: "🚫 Blokkeren",
     makeAdmin: "⭐ Maak admin", makeParticipant: "👤 Maak deelnemer",
     resetNumbers: "🔄 Reset nummers", deleteUser: "🗑️ Verwijder gebruiker",
-    creditsLabel: "Credits aanpassen", saveCredits: "Sla op",
+    creditsLabel: "Credits toevoegen (betaald bedrag)",
+    addCreditsBtn: "Toevoegen",
+    creditsPreview: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/stuk)`,
+    creditsSaved: (added, total) => `+${added} credit${added !== 1 ? 's' : ''} toegevoegd — nieuw saldo: ${total}`,
     confirmDelete: (name) => `Gebruiker "${name}" permanent verwijderen?`,
     confirmResetNums: (name) => `Nummers van ${name} resetten?`,
     drawSaved: (n) => `Trekking opgeslagen — ${n} deelnemers: 1 credit afgeschreven`,
     fetchLotto: "🔄 Ophalen van Lotto.nl",
     fetching: "Ophalen...",
     fetchSuccess: (d, nums) => `Opgehaald van Lotto.nl: ${d} — nummers: ${nums}. Controleer en sla op.`,
+    settingsTitle: "⚙️ Instellingen",
+    settingsCreditPrice: "Creditprijs per trekking",
+    settingsOrgPct: "Organisatiepercentage (%)",
+    settingsCurrency: "Valuta",
+    settingsSave: "Opslaan",
+    settingsSaved: "Instellingen opgeslagen",
   },
   en: {
     title: "Admin Panel", subtitle: "Participant Management",
@@ -48,13 +65,13 @@ const T = {
     drawNumbersLabel: "6 winning numbers (1–45)",
     saveDraw: "Save draw",
     recentDraws: "Recent draws",
-    published: "Published", concept: "Draft",
+    published: "✅ Published", concept: "📝 Draft",
     potSection: "💰 Current pot",
     winnerSection: "🏆 Winner",
     winnerNumbers: "Numbers:",
     winnerContact: "⚠️ Contact the winner!",
     noWinner: "No winner yet.",
-    winnerPayout: (w, o) => `Winner: €${w} — Organisation 15%: €${o}`,
+    winnerPayout: (sym, w, o, pct) => `Winner: ${sym}${w} — Organisation ${pct}%: ${sym}${o}`,
     resetSection: "♻️ Reset Lotto",
     resetWarning: "This clears all draws and the pot. Participants keep their numbers. Cannot be undone!",
     resetBtn: "Reset Lotto", confirmReset: "Are you sure?", yesReset: "Yes, reset", cancel: "Cancel",
@@ -65,13 +82,22 @@ const T = {
     approve: "✅ Approve", unblock: "🔓 Unblock", block: "🚫 Block",
     makeAdmin: "⭐ Make admin", makeParticipant: "👤 Make participant",
     resetNumbers: "🔄 Reset numbers", deleteUser: "🗑️ Delete user",
-    creditsLabel: "Adjust credits", saveCredits: "Save",
+    creditsLabel: "Add credits (amount paid)",
+    addCreditsBtn: "Add",
+    creditsPreview: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/each)`,
+    creditsSaved: (added, total) => `+${added} credit${added !== 1 ? 's' : ''} added — new balance: ${total}`,
     confirmDelete: (name) => `Permanently delete user "${name}"?`,
     confirmResetNums: (name) => `Reset numbers for ${name}?`,
     drawSaved: (n) => `Draw saved — ${n} participants: 1 credit deducted`,
     fetchLotto: "🔄 Fetch from Lotto.nl",
     fetching: "Fetching...",
     fetchSuccess: (d, nums) => `Fetched from Lotto.nl: ${d} — numbers: ${nums}. Check and save.`,
+    settingsTitle: "⚙️ Settings",
+    settingsCreditPrice: "Credit price per draw",
+    settingsOrgPct: "Organisation percentage (%)",
+    settingsCurrency: "Currency",
+    settingsSave: "Save",
+    settingsSaved: "Settings saved",
   },
   es: {
     title: "Panel Admin", subtitle: "Gestión de participantes",
@@ -82,13 +108,13 @@ const T = {
     drawNumbersLabel: "6 números ganadores (1–45)",
     saveDraw: "Guardar sorteo",
     recentDraws: "Sorteos recientes",
-    published: "Publicado", concept: "Borrador",
+    published: "✅ Publicado", concept: "📝 Borrador",
     potSection: "💰 Bote actual",
     winnerSection: "🏆 Ganador",
     winnerNumbers: "Números:",
     winnerContact: "⚠️ ¡Contacta al ganador!",
     noWinner: "Aún no hay ganador.",
-    winnerPayout: (w, o) => `Ganador: €${w} — Organización 15%: €${o}`,
+    winnerPayout: (sym, w, o, pct) => `Ganador: ${sym}${w} — Organización ${pct}%: ${sym}${o}`,
     resetSection: "♻️ Reiniciar Lotto",
     resetWarning: "Esto borra todos los sorteos y el bote. Los participantes conservan sus números. ¡No se puede deshacer!",
     resetBtn: "Reiniciar Lotto", confirmReset: "¿Estás seguro?", yesReset: "Sí, reiniciar", cancel: "Cancelar",
@@ -99,13 +125,22 @@ const T = {
     approve: "✅ Aprobar", unblock: "🔓 Desbloquear", block: "🚫 Bloquear",
     makeAdmin: "⭐ Hacer admin", makeParticipant: "👤 Hacer participante",
     resetNumbers: "🔄 Resetear números", deleteUser: "🗑️ Eliminar usuario",
-    creditsLabel: "Ajustar créditos", saveCredits: "Guardar",
+    creditsLabel: "Agregar créditos (monto pagado)",
+    addCreditsBtn: "Agregar",
+    creditsPreview: (n, sym, price) => `= ${n} crédito${n !== 1 ? 's' : ''} (${sym}${price}/c/u)`,
+    creditsSaved: (added, total) => `+${added} crédito${added !== 1 ? 's' : ''} agregado — saldo nuevo: ${total}`,
     confirmDelete: (name) => `¿Eliminar permanentemente al usuario "${name}"?`,
     confirmResetNums: (name) => `¿Resetear los números de ${name}?`,
     drawSaved: (n) => `Sorteo guardado — ${n} participantes: 1 crédito deducido`,
     fetchLotto: "🔄 Obtener de Lotto.nl",
     fetching: "Obteniendo...",
     fetchSuccess: (d, nums) => `Obtenido de Lotto.nl: ${d} — números: ${nums}. Comprueba y guarda.`,
+    settingsTitle: "⚙️ Configuración",
+    settingsCreditPrice: "Precio por crédito",
+    settingsOrgPct: "Porcentaje organización (%)",
+    settingsCurrency: "Moneda",
+    settingsSave: "Guardar",
+    settingsSaved: "Configuración guardada",
   }
 };
 
@@ -117,7 +152,7 @@ export default function AdminPanel({ token }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [creditInputs, setCreditInputs] = useState({});
+  const [euroInputs, setEuroInputs] = useState({});
 
   const [potInfo, setPotInfo] = useState(null);
   const [winnerInfo, setWinnerInfo] = useState(null);
@@ -131,28 +166,44 @@ export default function AdminPanel({ token }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  const [settings, setSettings] = useState({ creditPrice: 2.50, orgPercentage: 0.15 });
+  const [currency, setCurrencyState] = useState(localStorage.getItem("lotto_currency") || "EUR");
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ creditPrice: '', orgPercentage: '', currency: '' });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  const sym = CURRENCIES[currency]?.symbol ?? '€';
+  const orgPct = Math.round(settings.orgPercentage * 100);
+
   function changeLang(l) { setLang(l); localStorage.setItem("lotto_admin_lang", l); }
+  function changeCurrency(c) { setCurrencyState(c); localStorage.setItem("lotto_currency", c); }
 
   useEffect(() => { loadData(); }, [token]);
 
   async function loadData() {
     setLoading(true); setError("");
     try {
-      const [usersRes, potRes, drawsRes, winnerRes] = await Promise.all([
+      const [usersRes, potRes, drawsRes, winnerRes, settingsRes] = await Promise.all([
         fetch(`${API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/admin/pot`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/admin/draws`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/admin/winner`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/admin/settings`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const usersData = await usersRes.json();
       if (!Array.isArray(usersData)) throw new Error(usersData.error || "Fout bij ophalen gebruikers");
       setUsers(usersData);
       const inputs = {};
-      usersData.forEach(u => { inputs[u.id] = u.profile?.creditsBalance ?? 0; });
-      setCreditInputs(inputs);
+      usersData.forEach(u => { inputs[u.id] = ''; });
+      setEuroInputs(inputs);
       if (potRes.ok) setPotInfo(await potRes.json());
       if (drawsRes.ok) { const d = await drawsRes.json(); setDraws(Array.isArray(d) ? d : []); }
       if (winnerRes.ok) setWinnerInfo(await winnerRes.json());
+      if (settingsRes.ok) {
+        const s = await settingsRes.json();
+        setSettings(s);
+        setSettingsForm({ creditPrice: s.creditPrice, orgPercentage: Math.round(s.orgPercentage * 100), currency: localStorage.getItem("lotto_currency") || "EUR" });
+      }
     } catch (e) {
       setError(e.message || "Laden mislukt");
     }
@@ -196,18 +247,41 @@ export default function AdminPanel({ token }) {
     }
   }
 
-  async function saveCredits(userId) {
+  async function addCredits(userId) {
     setError(""); setSuccess("");
-    const credits = creditInputs[userId];
-    const res = await fetch(`${API_URL}/admin/set-credits`, {
+    const amount = parseFloat(euroInputs[userId]);
+    if (isNaN(amount) || amount <= 0) { setError("Vul een geldig bedrag in."); return; }
+    const res = await fetch(`${API_URL}/admin/add-credits`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ userId, credits: Number(credits) })
+      body: JSON.stringify({ userId, amount })
     });
     const data = await res.json();
     if (res.ok) {
-      setSuccess("Credits opgeslagen");
+      setSuccess(t.creditsSaved(data.creditsAdded, data.creditsBalance));
       setUsers(u => u.map(u2 => u2.id === userId ? { ...u2, profile: { ...u2.profile, creditsBalance: data.creditsBalance } } : u2));
+      setEuroInputs(prev => ({ ...prev, [userId]: '' }));
     } else { setError(data.error || "Fout bij credits."); }
+  }
+
+  async function saveSettings() {
+    setSettingsLoading(true); setError(""); setSuccess("");
+    const creditPrice = parseFloat(settingsForm.creditPrice);
+    const orgPercentage = parseFloat(settingsForm.orgPercentage) / 100;
+    if (isNaN(creditPrice) || creditPrice <= 0 || isNaN(orgPercentage) || orgPercentage < 0 || orgPercentage > 1) {
+      setError("Ongeldige instellingen."); setSettingsLoading(false); return;
+    }
+    const res = await fetch(`${API_URL}/admin/settings`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ creditPrice, orgPercentage })
+    });
+    const data = await res.json();
+    setSettingsLoading(false);
+    if (res.ok) {
+      setSettings(data);
+      changeCurrency(settingsForm.currency);
+      setSuccess(t.settingsSaved);
+      setShowSettings(false);
+    } else { setError(data.error || "Fout bij opslaan."); }
   }
 
   async function resetNumbers(userId) {
@@ -295,6 +369,15 @@ export default function AdminPanel({ token }) {
                 </button>
               ))}
             </div>
+            {/* Tandwiel instellingen */}
+            <button onClick={() => { setSettingsForm({ creditPrice: settings.creditPrice, orgPercentage: Math.round(settings.orgPercentage * 100), currency }); setShowSettings(true); }}
+              title={t.settingsTitle}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/70 hover:bg-white text-gray-600 hover:text-green-800 shadow transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </button>
             <button onClick={handleLogout}
               className="flex items-center gap-2 bg-white/80 hover:bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-lg shadow transition-all text-sm">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -304,6 +387,49 @@ export default function AdminPanel({ token }) {
             </button>
           </div>
         </div>
+
+        {/* Settings modal */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+              <h2 className="text-lg font-bold text-green-800 mb-4">{t.settingsTitle}</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t.settingsCreditPrice} ({sym})</label>
+                  <input type="number" min="0.01" step="0.01" value={settingsForm.creditPrice}
+                    onChange={e => setSettingsForm(f => ({ ...f, creditPrice: e.target.value }))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-400"/>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t.settingsOrgPct}</label>
+                  <input type="number" min="0" max="100" step="1" value={settingsForm.orgPercentage}
+                    onChange={e => setSettingsForm(f => ({ ...f, orgPercentage: e.target.value }))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-400"/>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t.settingsCurrency}</label>
+                  <select value={settingsForm.currency}
+                    onChange={e => setSettingsForm(f => ({ ...f, currency: e.target.value }))}
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                    {Object.entries(CURRENCIES).map(([code, c]) => (
+                      <option key={code} value={code}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button onClick={saveSettings} disabled={settingsLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm disabled:opacity-60">
+                  {settingsLoading ? t.saving : t.settingsSave}
+                </button>
+                <button onClick={() => setShowSettings(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg text-sm">
+                  {t.cancel}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Feedback */}
         {error && <div className="bg-red-100 border border-red-300 text-red-700 font-semibold rounded-lg px-4 py-3 mb-4">{error}</div>}
@@ -367,7 +493,7 @@ export default function AdminPanel({ token }) {
             <h2 className="text-lg font-bold text-green-800 mb-2">{t.potSection}</h2>
             {potInfo ? (
               <div className="text-3xl font-extrabold text-green-700">
-                €{potInfo.potTotal.toFixed(2)}
+                {sym}{potInfo.potTotal.toFixed(2)}
               </div>
             ) : <p className="text-gray-500 text-sm">{t.loading}</p>}
           </div>
@@ -377,9 +503,9 @@ export default function AdminPanel({ token }) {
             {hasWinner ? (() => {
               const pot = potInfo?.potTotal ?? 0;
               const winnerCount = winnerInfo.winners.length;
-              const totalPayout = pot * 0.85;
+              const totalPayout = pot * (1 - settings.orgPercentage);
               const perWinner = (totalPayout / winnerCount).toFixed(2);
-              const orgAmt = (pot * 0.15).toFixed(2);
+              const orgAmt = (pot * settings.orgPercentage).toFixed(2);
               const rowBg = ["bg-yellow-100/60", "bg-amber-50/80"];
               return (
                 <div>
@@ -397,7 +523,7 @@ export default function AdminPanel({ token }) {
                     </div>
                   ))}
                   <div className="mt-3 pt-2 border-t border-yellow-200 text-xs text-yellow-900 font-semibold">
-                    {t.winnerPayout((totalPayout).toFixed(2), orgAmt)}
+                    {t.winnerPayout(sym, totalPayout.toFixed(2), orgAmt, orgPct)}
                     {winnerCount > 1 && <span className="text-gray-500 font-normal ml-1">({winnerCount} winnaars)</span>}
                   </div>
                   <p className="text-xs text-orange-700 mt-1.5 font-semibold">{t.winnerContact}</p>
@@ -408,11 +534,11 @@ export default function AdminPanel({ token }) {
                 <p className="text-gray-500 text-sm mb-2">{t.noWinner}</p>
                 {potInfo && potInfo.potTotal > 0 && (() => {
                   const pot = potInfo.potTotal;
-                  const winnerAmt = (pot * 0.85).toFixed(2);
-                  const orgAmt = (pot * 0.15).toFixed(2);
+                  const winnerAmt = (pot * (1 - settings.orgPercentage)).toFixed(2);
+                  const orgAmt = (pot * settings.orgPercentage).toFixed(2);
                   return (
                     <p className="text-xs text-gray-600">
-                      {t.winnerPayout(winnerAmt, orgAmt)}
+                      {t.winnerPayout(sym, winnerAmt, orgAmt, orgPct)}
                     </p>
                   );
                 })()}
@@ -481,13 +607,22 @@ export default function AdminPanel({ token }) {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-1">
                             <span className={creditsClass(cr)}>{cr}</span>
-                            <input type="number" min={0} value={creditInputs[u.id] ?? 0}
-                              onChange={e => setCreditInputs({ ...creditInputs, [u.id]: e.target.value })}
-                              className="border border-gray-300 rounded px-2 py-1 w-16 text-xs"/>
-                            <button onClick={() => saveCredits(u.id)}
-                              className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">✓</button>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-400">{sym}</span>
+                              <input type="number" min={0} step="0.01" value={euroInputs[u.id] ?? ''}
+                                onChange={e => setEuroInputs({ ...euroInputs, [u.id]: e.target.value })}
+                                placeholder="0.00"
+                                className="border border-gray-300 rounded px-1.5 py-1 w-16 text-xs"/>
+                              <button onClick={() => addCredits(u.id)}
+                                className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">✓</button>
+                            </div>
+                            {euroInputs[u.id] > 0 && (
+                              <span className="text-xs text-blue-600">
+                                {t.creditsPreview(Math.floor(parseFloat(euroInputs[u.id]) / settings.creditPrice), sym, settings.creditPrice)}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -576,15 +711,22 @@ export default function AdminPanel({ token }) {
             </div>
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-500 mb-2">{t.creditsLabel}</p>
-              <div className="flex gap-2">
-                <input type="number" min={0} value={creditInputs[selectedUser.id] ?? 0}
-                  onChange={e => setCreditInputs({ ...creditInputs, [selectedUser.id]: e.target.value })}
+              <div className="flex gap-2 items-center">
+                <span className="text-sm text-gray-500 font-semibold">{sym}</span>
+                <input type="number" min={0} step="0.01" value={euroInputs[selectedUser.id] ?? ''}
+                  onChange={e => setEuroInputs({ ...euroInputs, [selectedUser.id]: e.target.value })}
+                  placeholder="0.00"
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-green-400"/>
-                <button onClick={() => saveCredits(selectedUser.id)}
+                <button onClick={() => addCredits(selectedUser.id)}
                   className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-sm">
-                  {t.saveCredits}
+                  {t.addCreditsBtn}
                 </button>
               </div>
+              {(euroInputs[selectedUser.id] ?? 0) > 0 && (
+                <p className="text-xs text-blue-600 mt-1">
+                  {t.creditsPreview(Math.floor(parseFloat(euroInputs[selectedUser.id]) / settings.creditPrice), sym, settings.creditPrice)}
+                </p>
+              )}
             </div>
           </div>
         </div>

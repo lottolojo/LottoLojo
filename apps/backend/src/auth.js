@@ -219,6 +219,48 @@ router.post('/admin/set-role', requireAdmin, async (req, res) => {
   res.json(user);
 });
 
+// Admin: instellingen ophalen
+router.get('/admin/settings', requireAdmin, async (req, res) => {
+  let s = await prisma.setting.findFirst();
+  if (!s) {
+    s = await prisma.setting.create({ data: { entryFee: 2.50, organizerPercentage: 0.15 } });
+  }
+  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage });
+});
+
+// Admin: instellingen opslaan
+router.post('/admin/settings', requireAdmin, async (req, res) => {
+  const { creditPrice, orgPercentage } = req.body;
+  if (typeof creditPrice !== 'number' || creditPrice <= 0) return res.status(400).json({ error: 'Ongeldige creditprijs' });
+  if (typeof orgPercentage !== 'number' || orgPercentage < 0 || orgPercentage > 1) return res.status(400).json({ error: 'Ongeldig percentage (0–1)' });
+  let s = await prisma.setting.findFirst();
+  if (!s) {
+    s = await prisma.setting.create({ data: { entryFee: creditPrice, organizerPercentage: orgPercentage } });
+  } else {
+    s = await prisma.setting.update({ where: { id: s.id }, data: { entryFee: creditPrice, organizerPercentage: orgPercentage } });
+  }
+  res.json({ creditPrice: s.entryFee, orgPercentage: s.organizerPercentage });
+});
+
+// Admin: credits toevoegen op basis van een betaald bedrag (bedrag ÷ creditprijs = credits)
+router.post('/admin/add-credits', requireAdmin, async (req, res) => {
+  const { userId, amount } = req.body;
+  if (typeof userId !== 'number' || typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ error: 'userId en bedrag (> 0) verplicht' });
+  }
+  const s = await prisma.setting.findFirst();
+  const creditPrice = s?.entryFee ?? 2.50;
+  const creditsToAdd = Math.floor(amount / creditPrice);
+  if (creditsToAdd <= 0) return res.status(400).json({ error: `Bedrag te laag — minimaal ${creditPrice} voor 1 credit` });
+  let profile = await prisma.participantProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    profile = await prisma.participantProfile.create({ data: { userId, creditsBalance: creditsToAdd } });
+  } else {
+    profile = await prisma.participantProfile.update({ where: { userId }, data: { creditsBalance: { increment: creditsToAdd } } });
+  }
+  res.json({ ...profile, creditsAdded: creditsToAdd, creditPrice });
+});
+
 // Admin: wekelijkse trekking invoeren + 1 credit aftrekken bij alle actieve deelnemers
 router.post('/admin/draw', requireAdmin, async (req, res) => {
   const { drawDate, winningNumbers } = req.body;
@@ -229,12 +271,19 @@ router.post('/admin/draw', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Nummers moeten tussen 1 en 45 liggen.' });
   }
   try {
+    // Voorkom dubbele trekking op dezelfde datum
+    const targetDate = drawDate ? new Date(drawDate) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate); nextDay.setDate(nextDay.getDate() + 1);
+    const existing = await prisma.draw.findFirst({ where: { drawDate: { gte: targetDate, lt: nextDay } } });
+    if (existing) return res.status(409).json({ error: `Er bestaat al een trekking voor ${targetDate.toISOString().slice(0,10)}` });
+
+    // Haal creditprijs op uit instellingen
+    const s = await prisma.setting.findFirst();
+    const creditPrice = s?.entryFee ?? 2.50;
+
     const draw = await prisma.draw.create({
-      data: {
-        drawDate: drawDate ? new Date(drawDate) : new Date(),
-        winningNumbers,
-        published: false
-      }
+      data: { drawDate: targetDate, winningNumbers, published: true }
     });
 
     // Trek 1 credit af bij alle actieve deelnemers (creditsBalance > 0)
@@ -243,22 +292,17 @@ router.post('/admin/draw', requireAdmin, async (req, res) => {
     });
     await Promise.all(
       activeProfiles.map(p =>
-        prisma.participantProfile.update({
-          where: { id: p.id },
-          data: { creditsBalance: { decrement: 1 } }
-        })
+        prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
       )
     );
 
-    // Registreer de potbijdrage voor deze trekking (1 credit = €2,50 per deelnemer)
-    const potAmount = activeProfiles.length * 2.50;
+    // Registreer de potbijdrage voor deze trekking
+    const potAmount = activeProfiles.length * creditPrice;
     if (potAmount > 0) {
       await prisma.potTransaction.create({
         data: {
-          drawId: draw.id,
-          type: 'draw',
-          amount: potAmount,
-          description: `Trekking ${draw.drawDate.toISOString().slice(0,10)}: ${activeProfiles.length} deelnemers × €2,50`
+          drawId: draw.id, type: 'draw', amount: potAmount,
+          description: `Trekking ${draw.drawDate.toISOString().slice(0,10)}: ${activeProfiles.length} deelnemers × ${creditPrice}`
         }
       });
     }
