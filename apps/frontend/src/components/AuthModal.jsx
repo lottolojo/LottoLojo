@@ -128,8 +128,16 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           setRegisteredEmail(form.email);
           setCode(["", "", "", "", "", ""]);
           setPhase("verifyEmail");
-          setInfoType("ok");
-          setInfo(data.message || "");
+          if (!data.emailSent && data.devCode) {
+            setInfoType("warn");
+            setInfo(`⚠️ Mail mislukt. Testcode: ${data.devCode}`);
+          } else if (!data.emailSent) {
+            setInfoType("warn");
+            setInfo("⚠️ E-mail kon niet worden verstuurd. Vraag de admin om je verificatiecode.");
+          } else {
+            setInfoType("ok");
+            setInfo(data.message || "");
+          }
         } else {
           setInfoType("err"); setInfo(data.error || "Registratie mislukt.");
         }

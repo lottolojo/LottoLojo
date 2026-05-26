@@ -414,6 +414,7 @@ router.post('/register', async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
     await prisma.twoFactorCode.create({ data: { userId: existing.id, codeHash: code, expiresAt } });
+    let emailOk2 = false;
     try {
       await transporter.sendMail({
         from: process.env.GMAIL_USER, to: email,
@@ -425,10 +426,14 @@ router.post('/register', async (req, res) => {
           <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;color:#166534;padding:16px 0;">${code}</div>
           <p style="color:#6b7280;font-size:13px;">Deze code is 30 minuten geldig.</p></div>`
       });
-      return res.json({ message: 'Nieuwe verificatiecode verstuurd naar je e-mail.' });
-    } catch {
-      return res.status(500).json({ error: 'Kon geen e-mail sturen.' });
-    }
+      emailOk2 = true;
+    } catch (err) { console.error('Mailfout herregistratie:', err.message); }
+    const isDev2 = process.env.NODE_ENV !== 'production';
+    return res.json({
+      message: emailOk2 ? 'Nieuwe verificatiecode verstuurd.' : 'Account gevonden. E-mail kon niet worden verstuurd — vraag de admin om je code.',
+      emailSent: emailOk2,
+      ...(isDev2 && { devCode: code })
+    });
   }
   if (existing && existing.approved) return res.status(400).json({ error: 'Gebruiker bestaat al.' });
   const hash = await bcrypt.hash(password, 10);
@@ -441,6 +446,7 @@ router.post('/register', async (req, res) => {
   await prisma.twoFactorCode.create({
     data: { userId: user.id, codeHash: code, expiresAt }
   });
+  let emailOk = false;
   try {
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
@@ -456,11 +462,20 @@ router.post('/register', async (req, res) => {
           <p style="color:#6b7280;font-size:13px;">Deze code is 30 minuten geldig. Deel deze code niet met anderen.</p>
         </div>`
     });
-    res.json({ message: 'Registratie gelukt! Voer de verificatiecode in die je per e-mail hebt ontvangen.' });
+    emailOk = true;
   } catch (err) {
-    console.error('Mailfout bij registratie:', err);
-    res.status(500).json({ error: 'Kon geen verificatie-e-mail sturen. Controleer het e-mailadres.' });
+    console.error('Mailfout bij registratie:', err.message);
   }
+  // Altijd doorgaan naar verificatiestap — ook als mail mislukt
+  // In dev/test: stuur de code mee in de response zodat admin hem kan zien
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.json({
+    message: emailOk
+      ? 'Registratie gelukt! Voer de verificatiecode in die je per e-mail hebt ontvangen.'
+      : 'Account aangemaakt. E-mail kon niet worden verstuurd — vraag de admin om je verificatiecode.',
+    emailSent: emailOk,
+    ...(isDev && { devCode: code })
+  });
 });
 
 // Verificatiecode invoeren na registratie
