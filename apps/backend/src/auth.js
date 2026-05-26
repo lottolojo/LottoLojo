@@ -4,19 +4,17 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 import * as cheerio from 'cheerio';
 import cron from 'node-cron';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supergeheim';
 const router = express.Router();
 const prisma = new PrismaClient();
-const resend = new Resend(process.env.RESEND_API_KEY);
-
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 async function sendMail({ to, subject, text, html }) {
-  const from = process.env.RESEND_FROM || 'LottoLoJo <onboarding@resend.dev>';
-  const { error } = await resend.emails.send({ from, to, subject, text, html });
-  if (error) throw new Error(error.message || 'Resend fout');
+  const from = process.env.SENDGRID_FROM || 'noreply@lottolojo.nl';
+  await sgMail.send({ from, to, subject, text, html });
 }
 
 // Middleware: authenticatie met JWT
