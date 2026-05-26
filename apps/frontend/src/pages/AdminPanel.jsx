@@ -56,6 +56,11 @@ const T = {
     settingsResetConfirm1: "Weet je het zeker? Dit wist ALLE trekkingen, de pot én de credits van alle deelnemers.",
     settingsResetConfirm2: "Laatste kans — dit kan NIET ongedaan worden gemaakt. Doorgaan?",
     settingsResetDone: "Alles gereset naar nul.",
+    settingsInputMode: "Invoermodus credits",
+    settingsInputCredits: "Credits",
+    settingsInputMoney: "Geld",
+    creditsPreviewMoney: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/stuk)`,
+    creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   },
   en: {
     title: "Admin Panel", subtitle: "Participant Management",
@@ -103,6 +108,11 @@ const T = {
     settingsResetConfirm1: "Are you sure? This erases ALL draws, the pot AND all participant credits.",
     settingsResetConfirm2: "Last chance — this CANNOT be undone. Continue?",
     settingsResetDone: "Everything reset to zero.",
+    settingsInputMode: "Credits input mode",
+    settingsInputCredits: "Credits",
+    settingsInputMoney: "Money",
+    creditsPreviewMoney: (n, sym, price) => `= ${n} credit${n !== 1 ? 's' : ''} (${sym}${price}/each)`,
+    creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   },
   es: {
     title: "Panel Admin", subtitle: "Gestión de participantes",
@@ -150,6 +160,11 @@ const T = {
     settingsResetConfirm1: "¿Estás seguro? Esto borra TODOS los sorteos, el bote Y los créditos de todos.",
     settingsResetConfirm2: "Última oportunidad — esto NO se puede deshacer. ¿Continuar?",
     settingsResetDone: "Todo reseteado a cero.",
+    settingsInputMode: "Modo de entrada créditos",
+    settingsInputCredits: "Créditos",
+    settingsInputMoney: "Dinero",
+    creditsPreviewMoney: (n, sym, price) => `= ${n} crédito${n !== 1 ? 's' : ''} (${sym}${price}/c/u)`,
+    creditsPreviewCredits: (n, sym, price) => `= ${sym}${(n * price).toFixed(2)}`,
   }
 };
 
@@ -181,11 +196,20 @@ export default function AdminPanel({ token }) {
   const [settingsForm, setSettingsForm] = useState({ creditPrice: '', orgPercentage: '', currency: '' });
   const [settingsLoading, setSettingsLoading] = useState(false);
 
+  const [creditsInputMode, setCreditsInputMode] = useState(localStorage.getItem("lotto_credits_mode") || "money");
+
   const sym = CURRENCIES[currency]?.symbol ?? '€';
   const orgPct = Math.round(settings.orgPercentage * 100);
+  const isMoney = creditsInputMode === "money";
 
   function changeLang(l) { setLang(l); localStorage.setItem("lotto_admin_lang", l); }
   function changeCurrency(c) { setCurrencyState(c); localStorage.setItem("lotto_currency", c); }
+  function toggleInputMode() {
+    const next = isMoney ? "credits" : "money";
+    setCreditsInputMode(next);
+    localStorage.setItem("lotto_credits_mode", next);
+    setEuroInputs({});
+  }
 
   useEffect(() => { loadData(); }, [token]);
 
@@ -258,8 +282,10 @@ export default function AdminPanel({ token }) {
 
   async function addCredits(userId) {
     setError(""); setSuccess("");
-    const amount = parseFloat(euroInputs[userId]);
-    if (isNaN(amount) || amount <= 0) { setError("Vul een geldig bedrag in."); return; }
+    const raw = parseFloat(euroInputs[userId]);
+    if (isNaN(raw) || raw <= 0) { setError("Vul een geldig bedrag in."); return; }
+    // In credits-modus: invoer = aantal credits → omzetten naar euro-bedrag voor backend
+    const amount = isMoney ? raw : raw * settings.creditPrice;
     const res = await fetch(`${API_URL}/admin/add-credits`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ userId, amount })
@@ -464,6 +490,19 @@ export default function AdminPanel({ token }) {
                   {t.cancel}
                 </button>
               </div>
+              {/* Toggle: invoermodus credits vs geld */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <label className="text-xs font-semibold text-gray-600 block mb-2">{t.settingsInputMode}</label>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-semibold transition-colors ${!isMoney ? 'text-green-700' : 'text-gray-400'}`}>{t.settingsInputCredits}</span>
+                  <button onClick={toggleInputMode}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${isMoney ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isMoney ? 'translate-x-6' : 'translate-x-0'}`}/>
+                  </button>
+                  <span className={`text-sm font-semibold transition-colors ${isMoney ? 'text-green-700' : 'text-gray-400'}`}>{t.settingsInputMoney} ({sym})</span>
+                </div>
+              </div>
+
               <div className="mt-4 pt-4 border-t border-red-100">
                 <button onClick={resetAll} disabled={settingsLoading}
                   className="w-full bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 font-semibold py-2 rounded-lg text-sm transition-all disabled:opacity-60">
@@ -661,19 +700,27 @@ export default function AdminPanel({ token }) {
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <span className={`${creditsClass(cr)} min-w-[2.5rem] text-center`}>{cr}</span>
-                              <span className="text-xs text-gray-400 ml-1">{sym}</span>
-                              <input type="number" min={0} step="0.01" value={euroInputs[u.id] ?? ''}
+                              {isMoney && <span className="text-xs text-gray-400">{sym}</span>}
+                              <input type="number"
+                                min={isMoney ? settings.creditPrice : 1}
+                                step={isMoney ? settings.creditPrice : 1}
+                                value={euroInputs[u.id] ?? ''}
                                 onChange={e => setEuroInputs({ ...euroInputs, [u.id]: e.target.value })}
-                                placeholder="0.00"
+                                placeholder={isMoney ? settings.creditPrice.toFixed(2) : "1"}
                                 className="border border-gray-300 rounded px-1.5 py-1 w-20 text-xs"/>
                               <button onClick={() => addCredits(u.id)}
                                 className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">✓</button>
                             </div>
-                            {parseFloat(euroInputs[u.id]) > 0 && (
-                              <span className="text-xs text-blue-600 pl-1">
-                                {t.creditsPreview(Math.floor(parseFloat(euroInputs[u.id]) / settings.creditPrice), sym, settings.creditPrice)}
-                              </span>
-                            )}
+                            {parseFloat(euroInputs[u.id]) > 0 && (() => {
+                              const raw = parseFloat(euroInputs[u.id]);
+                              return (
+                                <span className="text-xs text-blue-600 pl-1">
+                                  {isMoney
+                                    ? t.creditsPreviewMoney(Math.floor(raw / settings.creditPrice), sym, settings.creditPrice)
+                                    : t.creditsPreviewCredits(raw, sym, settings.creditPrice)}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -763,21 +810,29 @@ export default function AdminPanel({ token }) {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-500 mb-2">{t.creditsLabel}</p>
               <div className="flex gap-2 items-center">
-                <span className="text-sm text-gray-500 font-semibold">{sym}</span>
-                <input type="number" min={0} step="0.01" value={euroInputs[selectedUser.id] ?? ''}
+                {isMoney && <span className="text-sm text-gray-500 font-semibold">{sym}</span>}
+                <input type="number"
+                  min={isMoney ? settings.creditPrice : 1}
+                  step={isMoney ? settings.creditPrice : 1}
+                  value={euroInputs[selectedUser.id] ?? ''}
                   onChange={e => setEuroInputs({ ...euroInputs, [selectedUser.id]: e.target.value })}
-                  placeholder="0.00"
+                  placeholder={isMoney ? settings.creditPrice.toFixed(2) : "1"}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-green-400"/>
                 <button onClick={() => addCredits(selectedUser.id)}
                   className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-sm">
                   {t.addCreditsBtn}
                 </button>
               </div>
-              {(euroInputs[selectedUser.id] ?? 0) > 0 && (
-                <p className="text-xs text-blue-600 mt-1">
-                  {t.creditsPreview(Math.floor(parseFloat(euroInputs[selectedUser.id]) / settings.creditPrice), sym, settings.creditPrice)}
-                </p>
-              )}
+              {parseFloat(euroInputs[selectedUser.id]) > 0 && (() => {
+                const raw = parseFloat(euroInputs[selectedUser.id]);
+                return (
+                  <p className="text-xs text-blue-600 mt-1">
+                    {isMoney
+                      ? t.creditsPreviewMoney(Math.floor(raw / settings.creditPrice), sym, settings.creditPrice)
+                      : t.creditsPreviewCredits(raw, sym, settings.creditPrice)}
+                  </p>
+                );
+              })()}
             </div>
           </div>
         </div>
