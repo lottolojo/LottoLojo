@@ -329,6 +329,18 @@ export default function AdminPanel({ token }) {
     else { setError(data.error || "Verwijderen mislukt."); }
   }
 
+  async function publishDraw(drawId) {
+    setError(""); setSuccess("");
+    const res = await fetch(`${API_URL}/admin/publish-draw/${drawId}`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setSuccess(lang === 'en' ? "Draw published" : lang === 'es' ? "Sorteo publicado" : "Trekking gepubliceerd");
+      setDraws(prev => prev.map(d => d.id === drawId ? { ...d, published: true } : d));
+    } else { setError(data.error || "Publiceren mislukt."); }
+  }
+
   async function resetLotto() {
     const res = await fetch(`${API_URL}/admin/reset-lotto`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
@@ -477,9 +489,17 @@ export default function AdminPanel({ token }) {
                         <span key={i} className="w-7 h-7 rounded-full bg-yellow-300 border-2 border-yellow-500 flex items-center justify-center font-bold text-xs">{n}</span>
                       ))}
                     </div>
-                    <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${d.published ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                      {d.published ? t.published : t.concept}
-                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {!d.published && (
+                        <button onClick={() => publishDraw(d.id)}
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 transition-all">
+                          ▶ Publiceer
+                        </button>
+                      )}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${d.published ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                        {d.published ? t.published : t.concept}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -608,18 +628,18 @@ export default function AdminPanel({ token }) {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <span className={creditsClass(cr)}>{cr}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-400">{sym}</span>
+                            <div className="flex items-center gap-2">
+                              <span className={`${creditsClass(cr)} min-w-[2.5rem] text-center`}>{cr}</span>
+                              <span className="text-xs text-gray-400 ml-1">{sym}</span>
                               <input type="number" min={0} step="0.01" value={euroInputs[u.id] ?? ''}
                                 onChange={e => setEuroInputs({ ...euroInputs, [u.id]: e.target.value })}
                                 placeholder="0.00"
-                                className="border border-gray-300 rounded px-1.5 py-1 w-16 text-xs"/>
+                                className="border border-gray-300 rounded px-1.5 py-1 w-20 text-xs"/>
                               <button onClick={() => addCredits(u.id)}
                                 className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">✓</button>
                             </div>
-                            {euroInputs[u.id] > 0 && (
-                              <span className="text-xs text-blue-600">
+                            {parseFloat(euroInputs[u.id]) > 0 && (
+                              <span className="text-xs text-blue-600 pl-1">
                                 {t.creditsPreview(Math.floor(parseFloat(euroInputs[u.id]) / settings.creditPrice), sym, settings.creditPrice)}
                               </span>
                             )}

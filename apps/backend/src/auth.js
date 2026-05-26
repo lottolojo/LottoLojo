@@ -271,12 +271,14 @@ router.post('/admin/draw', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Nummers moeten tussen 1 en 45 liggen.' });
   }
   try {
+    // Datumstring "YYYY-MM-DD" als lokale noon opslaan — voorkomt UTC-grens/tijdzone problemen
+    const dateStr = drawDate ? drawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const targetDate = new Date(dateStr + 'T12:00:00');
     // Voorkom dubbele trekking op dezelfde datum
-    const targetDate = drawDate ? new Date(drawDate) : new Date();
-    targetDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(targetDate); nextDay.setDate(nextDay.getDate() + 1);
-    const existing = await prisma.draw.findFirst({ where: { drawDate: { gte: targetDate, lt: nextDay } } });
-    if (existing) return res.status(409).json({ error: `Er bestaat al een trekking voor ${targetDate.toISOString().slice(0,10)}` });
+    const dayStart = new Date(dateStr + 'T00:00:00');
+    const dayEnd   = new Date(dateStr + 'T23:59:59');
+    const existing = await prisma.draw.findFirst({ where: { drawDate: { gte: dayStart, lte: dayEnd } } });
+    if (existing) return res.status(409).json({ error: `Er bestaat al een trekking voor ${dateStr}` });
 
     // Haal creditprijs op uit instellingen
     const s = await prisma.setting.findFirst();
@@ -566,33 +568,42 @@ router.get('/admin/fetch-lotto-draw', requireAdmin, async (req, res) => {
   }
 });
 
-// Cron: elke zaterdag om 21:05 automatisch de trekking opslaan als concept
+// Admin: concept-trekking publiceren
+router.post('/admin/publish-draw/:drawId', requireAdmin, async (req, res) => {
+  const drawId = parseInt(req.params.drawId);
+  if (isNaN(drawId)) return res.status(400).json({ error: 'Ongeldig drawId' });
+  const draw = await prisma.draw.update({ where: { id: drawId }, data: { published: true, publishedAt: new Date() } });
+  res.json(draw);
+});
+
+// Cron: elke zaterdag om 21:05 automatisch de trekking ophalen en DIRECT publiceren
 // Formaat: minuut uur dag-v-maand maand dag-v-week  (6 = zaterdag)
 cron.schedule('5 21 * * 6', async () => {
   console.log('[Cron] Automatisch ophalen Lotto trekking...');
   try {
     const { date, numbers } = await fetchLottoResults();
-    // Controleer of er al een trekking is voor deze datum
-    const existing = await prisma.draw.findFirst({ where: { drawDate: new Date(date) } });
+    // Datumcontrole met UTC-veilige methode
+    const dayStart = new Date(date + 'T00:00:00');
+    const dayEnd   = new Date(date + 'T23:59:59');
+    const existing = await prisma.draw.findFirst({ where: { drawDate: { gte: dayStart, lte: dayEnd } } });
     if (existing) { console.log('[Cron] Trekking al aanwezig voor', date); return; }
+    const s = await prisma.setting.findFirst();
+    const creditPrice = s?.entryFee ?? 2.50;
     const draw = await prisma.draw.create({
-      data: { drawDate: new Date(date), winningNumbers: numbers, published: false }
+      data: { drawDate: new Date(date + 'T12:00:00'), winningNumbers: numbers, published: true, publishedAt: new Date() }
     });
-    // Credits aftrekken
-    const activeProfiles = await prisma.participantProfile.findMany({
-      where: { active: true, creditsBalance: { gt: 0 } }
-    });
+    const activeProfiles = await prisma.participantProfile.findMany({ where: { active: true, creditsBalance: { gt: 0 } } });
     await Promise.all(activeProfiles.map(p =>
       prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
     ));
-    const potAmount = activeProfiles.length * 2.50;
+    const potAmount = activeProfiles.length * creditPrice;
     if (potAmount > 0) {
       await prisma.potTransaction.create({
         data: { drawId: draw.id, type: 'draw', amount: potAmount,
-          description: `Auto-trekking ${date}: ${activeProfiles.length} deelnemers × €2,50` }
+          description: `Auto-trekking ${date}: ${activeProfiles.length} deelnemers × ${creditPrice}` }
       });
     }
-    console.log(`[Cron] Trekking opgeslagen: ${date} – nummers: ${numbers.join(', ')} – ${activeProfiles.length} deelnemers`);
+    console.log(`[Cron] ✅ Trekking gepubliceerd: ${date} – ${numbers.join(', ')} – ${activeProfiles.length} deelnemers`);
   } catch (e) {
     console.error('[Cron] Fout bij automatische trekking:', e.message);
   }
