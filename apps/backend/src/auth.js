@@ -445,10 +445,13 @@ router.post('/reset-password', async (req, res) => {
 // ─── Lotto.nl automatisch ophalen ───────────────────────────────────────────
 
 // Helper: haalt de trekking op van lotto.nederlandseloterij.nl
-// Geeft { date, numbers: [n1..n6] } of gooit een Error
+// Geeft { date, numbers: [n1..n6] gesorteerd laag→hoog } of gooit een Error
 async function fetchLottoResults() {
   const res = await fetch('https://lotto.nederlandseloterij.nl/trekkingsuitslag', {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LottoLoJo/1.0)' }
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept-Language': 'nl-NL,nl;q=0.9'
+    }
   });
   if (!res.ok) throw new Error(`Lotto.nl antwoordde met status ${res.status}`);
   const html = await res.text();
@@ -456,7 +459,7 @@ async function fetchLottoResults() {
 
   // Datum uit de koptekst: "Winnende getallen van 23 mei 2026"
   let drawDate = null;
-  $('h2, h3').each((_, el) => {
+  $('h1, h2, h3').each((_, el) => {
     const txt = $(el).text();
     const m = txt.match(/(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})/i);
     if (m && !drawDate) {
@@ -466,33 +469,44 @@ async function fetchLottoResults() {
     }
   });
 
-  // Strategie 1: data-test attribuut (stabielst)
+  // Strategie 1 (meest betrouwbaar):
+  // Zoek de ul-container met aria-label="Winnende getallen Trekking"
+  // en lees de [data-test="ticket-viewer-number-primary"] elementen erin
   let nums = [];
-  $('[data-test*="winner-number"]').each((_, el) => {
-    const n = parseInt($(el).text().trim());
-    if (!isNaN(n) && n >= 1 && n <= 45) nums.push(n);
-  });
-
-  // Strategie 2: zoek de eerste lijst met ballen vóór "XL Trekking"
-  if (nums.length < 6) {
-    nums = [];
-    const pageText = $.html();
-    // Knip de HTML bij "XL" of "xl-trekking" zodat we alleen de hoofdtrekking hebben
-    const xlIdx = pageText.toLowerCase().indexOf('xl trekking');
-    const mainHtml = xlIdx > 0 ? pageText.substring(0, xlIdx) : pageText;
-    const $main = cheerio.load(mainHtml);
-    $main('li, span, div').each((_, el) => {
-      const txt = $main(el).text().trim();
-      const n = parseInt(txt);
-      if (!isNaN(n) && String(n) === txt && n >= 1 && n <= 45) nums.push(n);
+  const trekContainer = $('[aria-label*="Winnende getallen Trekking"]:not([aria-label*="XL"])');
+  if (trekContainer.length > 0) {
+    trekContainer.find('[data-test="ticket-viewer-number-primary"]').each((_, el) => {
+      const n = parseInt($(el).text().trim());
+      if (!isNaN(n) && n >= 1 && n <= 45) nums.push(n);
     });
-    // Dedupleer en behoud volgorde
-    nums = [...new Set(nums)];
   }
 
-  // Neem precies de eerste 6 (reservegetal = 7e, laten we weg)
-  const mainNums = nums.slice(0, 6);
-  if (mainNums.length !== 6) throw new Error(`Slechts ${mainNums.length} nummers gevonden (verwacht 6)`);
+  // Strategie 2: alle ticket-viewer-number-primary in de pagina, vóór de XL-container
+  if (nums.length < 6) {
+    nums = [];
+    const xlContainer = $('[aria-label*="XL"]');
+    let foundXl = false;
+    $('[data-test="ticket-viewer-number-primary"]').each((_, el) => {
+      if (foundXl) return;
+      // Stop zodra we de XL-container bereiken
+      if (xlContainer.length > 0 && $.contains(xlContainer[0], el)) { foundXl = true; return; }
+      const n = parseInt($(el).text().trim());
+      if (!isNaN(n) && n >= 1 && n <= 45) nums.push(n);
+    });
+  }
+
+  // Strategie 3: winning-numbers-ball-container met Trekking label
+  if (nums.length < 6) {
+    nums = [];
+    $('[data-test="winning-numbers-ball-container"]').first().find('[data-test="ticket-viewer-number-primary"]').each((_, el) => {
+      const n = parseInt($(el).text().trim());
+      if (!isNaN(n) && n >= 1 && n <= 45) nums.push(n);
+    });
+  }
+
+  // Neem precies de eerste 6 (reservegetal = 7e, laten we weg), sorteer laag→hoog
+  const mainNums = nums.slice(0, 6).sort((a, b) => a - b);
+  if (mainNums.length !== 6) throw new Error(`Slechts ${mainNums.length} nummers gevonden (verwacht 6). Mogelijk is de Lotto-pagina gewijzigd.`);
 
   return { date: drawDate || new Date().toISOString().slice(0, 10), numbers: mainNums };
 }
