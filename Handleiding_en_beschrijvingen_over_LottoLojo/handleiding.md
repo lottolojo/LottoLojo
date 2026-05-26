@@ -1,6 +1,6 @@
 # LottoLoJo — Handleiding & Technische Documentatie
 
-**Versie:** 2026.05.26.20  
+**Versie:** 2026.05.26.31  
 **Laatste update:** 26 mei 2026  
 **Ontwikkeld door:** Johân (met hulp van AI)
 
@@ -244,8 +244,8 @@ npm run dev
 ```
 DATABASE_URL="postgresql://gebruiker:wachtwoord@host/database?sslmode=require"
 JWT_SECRET=JouwGeheimeSleutel
-GMAIL_USER=jouw@gmail.com
-GMAIL_PASS=app-specifiek-wachtwoord
+SENDGRID_API_KEY=SG.xxxx...  (zie apps/backend/.env)
+SENDGRID_FROM=LottoLoJo <lottolojo@gmail.com>
 FRONTEND_URL=http://localhost:5173
 ADMIN_EMAIL=admin@jouwdomein.nl
 ADMIN_PASSWORD=JouwAdminWachtwoord
@@ -274,7 +274,57 @@ VITE_API_URL=http://localhost:4000
 
 ---
 
-## 9. Deployen op Render.com
+## 9. E-mail service (SendGrid)
+
+LottoLoJo gebruikt **SendGrid** voor het verzenden van verificatiemails bij registratie.
+
+### Waarom SendGrid?
+
+- Gratis tot 100 e-mails per dag (meer dan voldoende voor LottoLoJo)
+- Werkt probleemloos vanuit cloud-providers zoals Render.com
+- Geen domeinnaam vereist (Single Sender Verification volstaat)
+
+### Huidige configuratie
+
+| Instelling | Waarde |
+|---|---|
+| **Provider** | SendGrid (Twilio) |
+| **API Key** | Staat in `apps/backend/.env` als `SENDGRID_API_KEY` en in Render als environment variable. Niet in git opgeslagen (veiligheid). |
+| **Afzender** | `LottoLoJo <lottolojo@gmail.com>` |
+| **Account** | [app.sendgrid.com](https://app.sendgrid.com) — inloggen met lottolojo@gmail.com |
+
+> **Let op:** Bewaar deze API key geheim. Zet hem nooit in een bestand dat je naar GitHub pusht (het `.env` bestand staat in `.gitignore`).
+
+### SendGrid instellen (als je opnieuw moet beginnen)
+
+1. Ga naar [sendgrid.com](https://sendgrid.com) → maak gratis account aan
+2. Ga naar **Settings → Sender Authentication → Single Sender Verification**
+3. Klik "Create New Sender" → vul `lottolojo@gmail.com` in als afzender
+4. Klik de verificatiemail aan die naar `lottolojo@gmail.com` wordt gestuurd
+5. Ga naar **Settings → API Keys → Create API Key**
+6. Geef het de naam "LottoLoJo", kies "Restricted Access", zet "Mail Send" op Full Access
+7. Kopieer de key (begint met `SG.`) — **je kunt hem maar 1x zien!**
+
+### Environment variables op Render instellen
+
+Zet de volgende variabelen in het Render-dashboard (backend → Environment):
+
+| Key | Value |
+|---|---|
+| `SENDGRID_API_KEY` | *(staat in apps/backend/.env — niet in git opgeslagen)* |
+| `SENDGRID_FROM` | `LottoLoJo <lottolojo@gmail.com>` |
+
+### Optioneel: eigen domein koppelen
+
+Als je later een eigen domeinnaam hebt (bijv. `lottolojo.nl`), kun je in SendGrid een **Domain Authentication** instellen. Voordelen:
+- Betere afleverbaarheid (geen "via sendgrid.net" in e-mailclients)
+- Hogere vertrouwensscore bij spamfilters
+
+Stappen: SendGrid → Settings → Sender Authentication → Domain Authentication → voeg DNS-records toe bij je hosting.
+
+---
+
+## 10. Deployen op Render.com
 
 ### Backend
 
@@ -481,6 +531,10 @@ De database draait op **PostgreSQL via Neon.tech** en wordt beheerd met **Prisma
 | `2026.05.26.11` | 26 mei 2026 | Pot-berekening herschreven: aangemaakt via PotTransaction bij elke trekking (geen schatting meer). Na reset pot = €0. |
 | `2026.05.26.12` | 26 mei 2026 | Winnaar-sectie: duplicaten verwijderd (deduplicatie per userId). Uitbetaling per winnaar zichtbaar (85% gedeeld). Subtiele alternerende achtergrond per winnaar. |
 | `2026.05.26.13` | 26 mei 2026 | Automatisch ophalen van Lotto.nl: knop "🔄 Ophalen van Lotto.nl" in admin-paneel. Cron job elke zaterdag 21:05. `/health` endpoint voor UptimeRobot. Handleiding uitgebreid met UptimeRobot, Git-uitleg en deploy-stappen. |
+| `2026.05.26.14–28` | 26 mei 2026 | E-mailverificatie bij registratie (6-cijferige code). Credits-invoer verbeterd (per creditwaarde). Automatische taaldetectie op basis van browsertaal. Info-knop voor deelnemers met uitleg goed doel. Resend API geïntegreerd als e-mailprovider. |
+| `2026.05.26.29` | 26 mei 2026 | Nieuw endpoint `POST /resend-verification` voor opnieuw versturen verificatiecode. AuthModal: laad-indicator tijdens API-aanroepen. |
+| `2026.05.26.30` | 26 mei 2026 | Fix: Resend SDK foutafhandeling gecorrigeerd (SDK gooit geen exception maar geeft error-object). `RESEND_FROM` env var toegevoegd. |
+| `2026.05.26.31` | 26 mei 2026 | Migratie van Resend naar **SendGrid** voor e-mailverzending. `@sendgrid/mail` geïnstalleerd. `SENDGRID_API_KEY` en `SENDGRID_FROM` env vars. SendGrid gedocumenteerd in handleiding inclusief API key en configuratiestappen. |
 
 ---
 
@@ -695,8 +749,8 @@ npm run dev
 ```
 DATABASE_URL="postgresql://gebruiker:wachtwoord@host/database?sslmode=require"
 JWT_SECRET=JouwGeheimeSleutel
-GMAIL_USER=jouw@gmail.com
-GMAIL_PASS=app-specifiek-wachtwoord
+SENDGRID_API_KEY=SG.xxxx...  (zie apps/backend/.env)
+SENDGRID_FROM=LottoLoJo <lottolojo@gmail.com>
 FRONTEND_URL=http://localhost:5173
 ADMIN_EMAIL=admin@jouwdomein.nl
 ADMIN_PASSWORD=JouwAdminWachtwoord
