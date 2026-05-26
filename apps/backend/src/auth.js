@@ -14,13 +14,9 @@ const prisma = new PrismaClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendMail({ to, subject, text, html }) {
-  await resend.emails.send({
-    from: 'LottoLoJo <onboarding@resend.dev>',
-    to,
-    subject,
-    text,
-    html,
-  });
+  const from = process.env.RESEND_FROM || 'LottoLoJo <onboarding@resend.dev>';
+  const { error } = await resend.emails.send({ from, to, subject, text, html });
+  if (error) throw new Error(error.message || 'Resend fout');
 }
 
 // Middleware: authenticatie met JWT
