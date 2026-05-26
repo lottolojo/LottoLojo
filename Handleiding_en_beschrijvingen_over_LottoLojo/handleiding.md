@@ -1,8 +1,16 @@
 # LottoLoJo — Handleiding & Technische Documentatie
 
-**Versie:** 2026.05.26.13  
+**Versie:** 2026.05.26.20  
 **Laatste update:** 26 mei 2026  
 **Ontwikkeld door:** Johân (met hulp van AI)
+
+## Live URLs
+
+| Onderdeel | URL |
+|---|---|
+| **Frontend (app)** | https://lottolojo-front.onrender.com |
+| **Backend (API)** | https://lotjo-back.onrender.com |
+| **Health-check** | https://lotjo-back.onrender.com/health |
 
 ---
 
@@ -291,8 +299,9 @@ VITE_API_URL=http://localhost:4000
 
 | Onderdeel | URL |
 |-----------|-----|
-| Backend (API) | `https://lotjo-back.onrender.com` |
-| Health-check | `https://lotjo-back.onrender.com/health` |
+| **Frontend (app)** | `https://lottolojo-front.onrender.com` |
+| **Backend (API)** | `https://lotjo-back.onrender.com` |
+| **Health-check** | `https://lotjo-back.onrender.com/health` |
 
 ---
 
@@ -313,6 +322,8 @@ UptimeRobot pingt elke 5 minuten het `/health` endpoint:
 ```
 https://lotjo-back.onrender.com/health
 ```
+
+> Tip: stel ook een monitor in voor de frontend: `https://lottolojo-front.onrender.com`
 Dit endpoint antwoordt met `{ "status": "ok", "timestamp": "..." }` als de backend actief is.
 
 ### UptimeRobot instellen (nieuw project)
@@ -320,7 +331,7 @@ Dit endpoint antwoordt met `{ "status": "ok", "timestamp": "..." }` als de backe
 1. Ga naar [uptimerobot.com](https://uptimerobot.com) — maak gratis account
 2. Klik **"+ New Monitor"**
 3. Kies type: **HTTP(s)**
-4. Vul in: `https://jouw-backend.onrender.com/health`
+4. Vul in: `https://lotjo-back.onrender.com/health`
 5. Interval: **5 minuten**
 6. Klik **"Create Monitor"**
 
