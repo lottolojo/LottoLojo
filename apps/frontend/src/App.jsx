@@ -5,7 +5,7 @@ import "./theme.css";
 const VERSION = "v1.0.0";
 import AdminLogin from "./pages/AdminLogin";
 import AuthModal from "./components/AuthModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 
 const LANGUAGES = [
   { code: "nl", label: "Nederlands", flag: "🇳🇱" },
@@ -13,16 +13,55 @@ const LANGUAGES = [
   { code: "es", label: "Español", flag: "🇪🇸" },
 ];
 
-function LottoBall({ number, animate, isLojo, lojoLetter }) {
+function LottoBall({ number, animate, isLojo, lojoLetter, delay, isLojoIndex, flipDelay }) {
+  const controls = useAnimation();
+  const [showLetter, setShowLetter] = useState(false);
+
+  // Stap 1: bounce animatie bij laden
+  useEffect(() => {
+    if (animate) {
+      controls.start({
+        y: [0, -22, 0, -17, 0, -11, 0, -5, 0]
+      }, {
+        duration: 1.6,
+        delay: delay || 0,
+        ease: "easeOut",
+        times: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Stap 2: flip animatie wanneer isLojo actief wordt
+  useEffect(() => {
+    if (!isLojo) return;
+    const HALF = 260; // ms per helft van de flip
+
+    const run = async () => {
+      // Eerste helft: bal krimpt horizontaal naar 0
+      await controls.start({ scaleX: 0 }, { duration: HALF / 1000, ease: "easeIn" });
+      // Inhoud én kleur wisselt op het onzichtbare moment
+      setShowLetter(true);
+      // Tweede helft: bal groeit terug naar normaal
+      await controls.start({ scaleX: 1 }, { duration: HALF / 1000, ease: "easeOut" });
+    };
+
+    const t = setTimeout(run, flipDelay || 0);
+    return () => clearTimeout(t);
+  }, [isLojo]);
+
+  const bgClass = showLetter
+    ? "bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-300 text-green-900"
+    : "bg-gradient-to-br from-yellow-300 to-green-400 border-white text-black";
+
   return (
-    <div
-      className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg mx-1 mb-2 transition-all duration-700 bg-gradient-to-br from-yellow-300 to-green-400 border-4 border-white drop-shadow-lg ${animate ? "animate-bounce" : ""}`}
-      style={{
-        animationDelay: `${Math.random() * 0.5}s`,
-      }}
+    <motion.div
+      animate={controls}
+      className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg mx-1 mb-2 border-4 drop-shadow-lg select-none ${bgClass}
+        ${isLojoIndex ? "" : "hidden sm:flex"}`}
     >
-      {isLojo ? lojoLetter : number}
-    </div>
+      {showLetter ? lojoLetter : number}
+    </motion.div>
   );
 }
 
@@ -166,6 +205,9 @@ export default function App() {
                 animate={true}
                 isLojo={lojoPhase && lojoIndices.includes(i)}
                 lojoLetter={lojoPhase && lojoIndices.includes(i) ? lojoLetters[lojoIndices.indexOf(i)] : null}
+                delay={i * 0.1}
+                isLojoIndex={lojoIndices.includes(i)}
+                flipDelay={lojoIndices.includes(i) ? lojoIndices.indexOf(i) * 300 : 0}
               />
             ))}
           </motion.div>
@@ -188,18 +230,33 @@ export default function App() {
                   <LottoBall key={i} number={num} animate={true} />
                 ))}
               </div>
-              <button
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded text-base transition-all"
-                style={{ minWidth: 120 }}
-                onClick={() => {
-                  localStorage.removeItem("lotto_numbers");
-                  window.location.reload();
-                }}
-              >
-                {language === "nl" && "Kies opnieuw"}
-                {language === "en" && "Choose again"}
-                {language === "es" && "Elegir de nuevo"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded text-base transition-all"
+                  style={{ minWidth: 120 }}
+                  onClick={() => {
+                    localStorage.removeItem("lotto_numbers");
+                    window.location.reload();
+                  }}
+                >
+                  {language === "nl" && "Kies opnieuw"}
+                  {language === "en" && "Choose again"}
+                  {language === "es" && "Elegir de nuevo"}
+                </button>
+                <button
+                  title={language === "nl" ? "Uitloggen" : language === "en" ? "Logout" : "Cerrar sesión"}
+                  onClick={() => {
+                    localStorage.removeItem("lotto_token");
+                    localStorage.removeItem("lotto_numbers");
+                    window.location.reload();
+                  }}
+                  className="p-2 rounded-full hover:bg-red-100 focus:outline-none transition-all"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </motion.div>
         ) : (

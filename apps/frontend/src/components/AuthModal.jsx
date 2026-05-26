@@ -107,7 +107,9 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
             password: form.password
           })
         });
+        const data = await res.json();
         if (res.ok) {
+          localStorage.setItem("lotto_token", data.token);
           setInfo("Succesvol ingelogd! Je wordt doorgestuurd...");
           setTimeout(() => {
             window.history.pushState({}, "", "/dashboard");
@@ -115,7 +117,6 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
             onSubmit && onSubmit(form);
           }, 1000);
         } else {
-          const data = await res.json();
           if (data.error === "E-mail nog niet geverifieerd.") {
             setInfo("Je account is nog niet geactiveerd. Check je e-mail voor de verificatielink.");
           } else if (data.require2fa) {

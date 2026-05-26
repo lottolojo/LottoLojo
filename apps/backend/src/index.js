@@ -15,6 +15,11 @@ app.get('/', (req, res) => {
   res.send('LottoLoJo backend werkt!');
 });
 
+// Health-check endpoint — gebruikt door UptimeRobot om de backend wakker te houden
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend draait op http://localhost:${PORT}`);

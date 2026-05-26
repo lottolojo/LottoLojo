@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import * as cheerio from 'cheerio';
+import cron from 'node-cron';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supergeheim';
 const router = express.Router();
@@ -18,21 +20,104 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Middleware: authenticatie met JWT
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: 'Geen token' });
+  try {
+    const token = auth.replace('Bearer ', '');
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Ongeldige token' });
+  }
+}
+
+// GET /me: haal profiel op van ingelogde gebruiker (inclusief credits)
+router.get('/me', requireAuth, async (req, res) => {
+  const userId = req.user.id;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true }
+  });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    credits: user.profile?.creditsBalance ?? 0
+  });
+});
+
+// GET /draw/latest: meest recente trekking (voor deelnemers)
+router.get('/draw/latest', requireAuth, async (req, res) => {
+  const draw = await prisma.draw.findFirst({
+    orderBy: { createdAt: 'desc' }
+  });
+  res.json(draw || null);
+});
+
+// GET /draw/cumulative: alle ooit-getrokken unieke nummers (over alle trekkingen heen)
+router.get('/draw/cumulative', requireAuth, async (req, res) => {
+  const draws = await prisma.draw.findMany({ orderBy: { drawDate: 'asc' } });
+  const allNumbers = draws.flatMap(d => Array.isArray(d.winningNumbers) ? d.winningNumbers : []);
+  const unique = [...new Set(allNumbers)].sort((a, b) => a - b);
+  res.json({ numbers: unique, drawCount: draws.length });
+});
+
+// GET /numbers: haal laatst opgeslagen nummers van ingelogde gebruiker
+router.get('/numbers', requireAuth, async (req, res) => {
+  console.log("[GET /numbers] Ingelogde gebruiker:", req.user);
+  const userId = req.user.id;
+  const selection = await prisma.numberSelection.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' }
+  });
+  if (!selection) return res.json({ numbers: null });
+  res.json({ numbers: selection.numbers });
+});
+
+// POST /numbers: sla nummers op voor ingelogde gebruiker
+router.post('/numbers', requireAuth, async (req, res) => {
+  console.log("[POST /numbers] Ingelogde gebruiker:", req.user);
+  const userId = req.user.id;
+  const { numbers } = req.body;
+  console.log("POST /numbers aangeroepen", { userId, numbers });
+  if (!Array.isArray(numbers) || numbers.length !== 10) {
+    console.log("FOUT: Geen 10 nummers", numbers);
+    return res.status(400).json({ error: 'Geef precies 10 nummers op.' });
+  }
+  try {
+    const selection = await prisma.numberSelection.create({
+      data: {
+        userId,
+        numbers,
+        validFromDrawId: 1 // evt. aanpassen naar juiste draw
+      }
+    });
+    console.log("Nummerselectie opgeslagen", selection);
+    res.json({ numbers: selection.numbers });
+  } catch (e) {
+    console.error("FOUT bij opslaan nummerselectie", e);
+    res.status(500).json({ error: 'Opslaan in database mislukt.' });
+  }
+});
+
 // Middleware: check admin
 function requireAdmin(req, res, next) {
-  // JWT-authenticatie UITGESCHAKELD voor testdoeleinden
-  // const auth = req.headers.authorization;
-  // if (!auth) return res.status(401).json({ error: 'Geen token' });
-  // try {
-  //   const token = auth.replace('Bearer ', '');
-  //   const payload = jwt.verify(token, JWT_SECRET);
-  //   req.user = payload;
-  //   if (payload.role !== 'admin') return res.status(403).json({ error: 'Geen admin-rechten' });
-  //   next();
-  // } catch (e) {
-  //   return res.status(401).json({ error: 'Ongeldige token' });
-  // }
-  next();
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: 'Geen token' });
+  try {
+    const token = auth.replace('Bearer ', '');
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    if (payload.role !== 'admin') return res.status(403).json({ error: 'Geen admin-rechten' });
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Ongeldige token' });
+  }
 }
 
 // Admin: alle users ophalen (inclusief credits)
@@ -41,6 +126,84 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
     include: { profile: true }
   });
   res.json(users);
+});
+
+// Admin: pot totaal berekenen
+router.get('/admin/pot', requireAdmin, async (req, res) => {
+  const transactions = await prisma.potTransaction.findMany();
+  const potTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
+  res.json({ potTotal });
+});
+
+// Admin: winnaar(s) bepalen op basis van CUMULATIEVE getrokken nummers (alle trekkingen samen)
+router.get('/admin/winner', requireAdmin, async (req, res) => {
+  const draws = await prisma.draw.findMany({ orderBy: { drawDate: 'asc' } });
+  if (!draws.length) return res.json({ winners: [], cumulativeNumbers: [] });
+  // Verzamel alle unieke ooit-getrokken nummers
+  const allDrawn = draws.flatMap(d => Array.isArray(d.winningNumbers) ? d.winningNumbers : []);
+  const cumulativeNumbers = [...new Set(allDrawn)];
+  // Haal alle nummerselecties op — dedupleer per userId (neem de meest recente)
+  const selections = await prisma.numberSelection.findMany({
+    include: { user: true },
+    orderBy: { createdAt: 'desc' }
+  });
+  const seenUsers = new Set();
+  const uniqueSelections = selections.filter(s => {
+    if (seenUsers.has(s.userId)) return false;
+    seenUsers.add(s.userId);
+    return true;
+  });
+  // Winnaar = iemand wiens 10 nummers allemaal in de cumulatieve set zitten
+  const winners = uniqueSelections.filter(s => {
+    const nums = Array.isArray(s.numbers) ? s.numbers : [];
+    return nums.length === 10 && nums.every(n => cumulativeNumbers.includes(n));
+  }).map(s => ({
+    userId: s.userId,
+    userName: s.user.name,
+    userEmail: s.user.email,
+    numbers: s.numbers
+  }));
+  res.json({ winners, cumulativeNumbers, drawCount: draws.length });
+});
+
+// Admin: lotto resetten (wis pot transacties)
+router.post('/admin/reset-lotto', requireAdmin, async (req, res) => {
+  await prisma.potTransaction.deleteMany();
+  await prisma.draw.deleteMany();
+  res.json({ message: 'Lotto gereset — pot is €0, trekkingen gewist.' });
+});
+
+// Admin: gebruiker goedkeuren
+router.post('/admin/approve-user/:userId', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Ongeldig userId' });
+  const user = await prisma.user.update({ where: { id: userId }, data: { approved: true } });
+  res.json(user);
+});
+
+// Admin: blokkeren/deblokkeren toggle
+router.post('/admin/toggle-block/:userId', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Ongeldig userId' });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+  const updated = await prisma.user.update({ where: { id: userId }, data: { blocked: !user.blocked } });
+  res.json(updated);
+});
+
+// Admin: gebruiker verwijderen
+router.delete('/admin/delete-user/:userId', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Ongeldig userId' });
+  try {
+    await prisma.numberSelection.deleteMany({ where: { userId } });
+    await prisma.participantProfile.deleteMany({ where: { userId } });
+    await prisma.twoFactorCode.deleteMany({ where: { userId } });
+    await prisma.user.delete({ where: { id: userId } });
+    res.json({ message: 'Gebruiker verwijderd' });
+  } catch (e) {
+    res.status(500).json({ error: 'Verwijderen mislukt.' });
+  }
 });
 
 // Admin: role aanpassen (max 2 extra admins naast LottoLoJo)
@@ -54,6 +217,75 @@ router.post('/admin/set-role', requireAdmin, async (req, res) => {
   }
   const user = await prisma.user.update({ where: { id: userId }, data: { role } });
   res.json(user);
+});
+
+// Admin: wekelijkse trekking invoeren + 1 credit aftrekken bij alle actieve deelnemers
+router.post('/admin/draw', requireAdmin, async (req, res) => {
+  const { drawDate, winningNumbers } = req.body;
+  if (!Array.isArray(winningNumbers) || winningNumbers.length !== 6) {
+    return res.status(400).json({ error: 'Geef precies 6 winnende nummers op (1-45).' });
+  }
+  if (winningNumbers.some(n => typeof n !== 'number' || n < 1 || n > 45)) {
+    return res.status(400).json({ error: 'Nummers moeten tussen 1 en 45 liggen.' });
+  }
+  try {
+    const draw = await prisma.draw.create({
+      data: {
+        drawDate: drawDate ? new Date(drawDate) : new Date(),
+        winningNumbers,
+        published: false
+      }
+    });
+
+    // Trek 1 credit af bij alle actieve deelnemers (creditsBalance > 0)
+    const activeProfiles = await prisma.participantProfile.findMany({
+      where: { active: true, creditsBalance: { gt: 0 } }
+    });
+    await Promise.all(
+      activeProfiles.map(p =>
+        prisma.participantProfile.update({
+          where: { id: p.id },
+          data: { creditsBalance: { decrement: 1 } }
+        })
+      )
+    );
+
+    // Registreer de potbijdrage voor deze trekking (1 credit = €2,50 per deelnemer)
+    const potAmount = activeProfiles.length * 2.50;
+    if (potAmount > 0) {
+      await prisma.potTransaction.create({
+        data: {
+          drawId: draw.id,
+          type: 'draw',
+          amount: potAmount,
+          description: `Trekking ${draw.drawDate.toISOString().slice(0,10)}: ${activeProfiles.length} deelnemers × €2,50`
+        }
+      });
+    }
+
+    res.json({ ...draw, creditsDeducted: activeProfiles.length, potAmount });
+  } catch (e) {
+    console.error('Fout bij aanmaken trekking:', e);
+    res.status(500).json({ error: 'Trekking aanmaken mislukt.' });
+  }
+});
+
+// Admin: trekking ophalen (alle trekkingen)
+router.get('/admin/draws', requireAdmin, async (req, res) => {
+  const draws = await prisma.draw.findMany({ orderBy: { drawDate: 'desc' }, take: 10 });
+  res.json(draws);
+});
+
+// Admin: nummerselectie resetten voor een deelnemer
+router.delete('/admin/reset-numbers/:userId', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Ongeldig userId' });
+  try {
+    await prisma.numberSelection.deleteMany({ where: { userId } });
+    res.json({ message: 'Nummers gereset' });
+  } catch (e) {
+    res.status(500).json({ error: 'Reset mislukt.' });
+  }
 });
 
 // Admin: credits aanpassen
@@ -209,5 +441,103 @@ router.post('/reset-password', async (req, res) => {
   await prisma.twoFactorCode.update({ where: { id: code.id }, data: { usedAt: new Date() } });
   res.json({ message: 'Wachtwoord succesvol aangepast' });
 });
+
+// ─── Lotto.nl automatisch ophalen ───────────────────────────────────────────
+
+// Helper: haalt de trekking op van lotto.nederlandseloterij.nl
+// Geeft { date, numbers: [n1..n6] } of gooit een Error
+async function fetchLottoResults() {
+  const res = await fetch('https://lotto.nederlandseloterij.nl/trekkingsuitslag', {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LottoLoJo/1.0)' }
+  });
+  if (!res.ok) throw new Error(`Lotto.nl antwoordde met status ${res.status}`);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  // Datum uit de koptekst: "Winnende getallen van 23 mei 2026"
+  let drawDate = null;
+  $('h2, h3').each((_, el) => {
+    const txt = $(el).text();
+    const m = txt.match(/(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})/i);
+    if (m && !drawDate) {
+      const maanden = { januari:1,februari:2,maart:3,april:4,mei:5,juni:6,juli:7,augustus:8,september:9,oktober:10,november:11,december:12 };
+      const d = parseInt(m[1]), mo = maanden[m[2].toLowerCase()], y = parseInt(m[3]);
+      drawDate = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+  });
+
+  // Strategie 1: data-test attribuut (stabielst)
+  let nums = [];
+  $('[data-test*="winner-number"]').each((_, el) => {
+    const n = parseInt($(el).text().trim());
+    if (!isNaN(n) && n >= 1 && n <= 45) nums.push(n);
+  });
+
+  // Strategie 2: zoek de eerste lijst met ballen vóór "XL Trekking"
+  if (nums.length < 6) {
+    nums = [];
+    const pageText = $.html();
+    // Knip de HTML bij "XL" of "xl-trekking" zodat we alleen de hoofdtrekking hebben
+    const xlIdx = pageText.toLowerCase().indexOf('xl trekking');
+    const mainHtml = xlIdx > 0 ? pageText.substring(0, xlIdx) : pageText;
+    const $main = cheerio.load(mainHtml);
+    $main('li, span, div').each((_, el) => {
+      const txt = $main(el).text().trim();
+      const n = parseInt(txt);
+      if (!isNaN(n) && String(n) === txt && n >= 1 && n <= 45) nums.push(n);
+    });
+    // Dedupleer en behoud volgorde
+    nums = [...new Set(nums)];
+  }
+
+  // Neem precies de eerste 6 (reservegetal = 7e, laten we weg)
+  const mainNums = nums.slice(0, 6);
+  if (mainNums.length !== 6) throw new Error(`Slechts ${mainNums.length} nummers gevonden (verwacht 6)`);
+
+  return { date: drawDate || new Date().toISOString().slice(0, 10), numbers: mainNums };
+}
+
+// Admin: haal de actuele trekking op van lotto.nederlandseloterij.nl
+router.get('/admin/fetch-lotto-draw', requireAdmin, async (req, res) => {
+  try {
+    const result = await fetchLottoResults();
+    res.json(result);
+  } catch (e) {
+    console.error('Fout bij ophalen Lotto resultaten:', e.message);
+    res.status(500).json({ error: e.message || 'Ophalen mislukt' });
+  }
+});
+
+// Cron: elke zaterdag om 21:05 automatisch de trekking opslaan als concept
+// Formaat: minuut uur dag-v-maand maand dag-v-week  (6 = zaterdag)
+cron.schedule('5 21 * * 6', async () => {
+  console.log('[Cron] Automatisch ophalen Lotto trekking...');
+  try {
+    const { date, numbers } = await fetchLottoResults();
+    // Controleer of er al een trekking is voor deze datum
+    const existing = await prisma.draw.findFirst({ where: { drawDate: new Date(date) } });
+    if (existing) { console.log('[Cron] Trekking al aanwezig voor', date); return; }
+    const draw = await prisma.draw.create({
+      data: { drawDate: new Date(date), winningNumbers: numbers, published: false }
+    });
+    // Credits aftrekken
+    const activeProfiles = await prisma.participantProfile.findMany({
+      where: { active: true, creditsBalance: { gt: 0 } }
+    });
+    await Promise.all(activeProfiles.map(p =>
+      prisma.participantProfile.update({ where: { id: p.id }, data: { creditsBalance: { decrement: 1 } } })
+    ));
+    const potAmount = activeProfiles.length * 2.50;
+    if (potAmount > 0) {
+      await prisma.potTransaction.create({
+        data: { drawId: draw.id, type: 'draw', amount: potAmount,
+          description: `Auto-trekking ${date}: ${activeProfiles.length} deelnemers × €2,50` }
+      });
+    }
+    console.log(`[Cron] Trekking opgeslagen: ${date} – nummers: ${numbers.join(', ')} – ${activeProfiles.length} deelnemers`);
+  } catch (e) {
+    console.error('[Cron] Fout bij automatische trekking:', e.message);
+  }
+}, { timezone: 'Europe/Amsterdam' });
 
 export default router;

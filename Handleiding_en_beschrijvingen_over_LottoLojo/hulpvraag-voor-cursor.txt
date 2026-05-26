@@ -1,0 +1,28 @@
+Project: LottoLoJo
+
+Wat is gebouwd:
+- Een webapplicatie (frontend in React, backend in Node/Express, database via Prisma) voor het kiezen en opslaan van Lotjo-nummers.
+- JWT-authenticatie voor gebruikers (inloggen, token in localStorage, beveiligde routes).
+- Gebruikers kunnen 10 unieke nummers kiezen, opslaan en bij opnieuw inloggen ophalen.
+- Zowel een lokale als een online (Render.com) versie aanwezig.
+
+Wat werkt:
+- Inloggen werkt, JWT-token wordt aangemaakt en opgeslagen.
+- Frontend toont juiste schermen, taalkeuze, en nummerselectie.
+- Backend heeft routes voor het ophalen en opslaan van nummers, beveiligd met JWT.
+- Database bevat tabellen User en NumberSelection.
+
+Waar lopen we tegenaan:
+- Gekozen nummers worden NIET opgeslagen in de database (NumberSelection blijft leeg).
+- Geen foutmelding in de frontend, maar in de database verschijnt geen nieuwe regel.
+- JWT-token bevat een geldig userId, deze gebruiker bestaat ook in de User-tabel.
+- Zowel lokaal als online getest, probleem blijft bestaan.
+- Backend-log toont geen duidelijke foutmelding bij POST /auth/numbers.
+- Frontend en backend lijken correct te communiceren (geen 401 of 500), maar data komt niet in de database.
+
+Waarom hulp gezocht:
+- We draaien in cirkels, oorzaak blijft onduidelijk.
+- Mogelijk een probleem met Prisma, database-connectie, of een subtiele bug in backend-logica.
+- Hulp gevraagd aan Claude Sonnet in Cursor om met een frisse blik te kijken en het probleem te doorbreken.
+
+Graag advies hoe verder te debuggen of waar het probleem kan zitten.
