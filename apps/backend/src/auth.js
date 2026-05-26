@@ -199,18 +199,21 @@ router.post('/admin/toggle-block/:userId', requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
-// Admin: gebruiker verwijderen
+// Admin: gebruiker verwijderen (inclusief alle gerelateerde records)
 router.delete('/admin/delete-user/:userId', requireAdmin, async (req, res) => {
   const userId = parseInt(req.params.userId);
   if (isNaN(userId)) return res.status(400).json({ error: 'Ongeldig userId' });
   try {
-    await prisma.numberSelection.deleteMany({ where: { userId } });
-    await prisma.participantProfile.deleteMany({ where: { userId } });
     await prisma.twoFactorCode.deleteMany({ where: { userId } });
+    await prisma.numberSelection.deleteMany({ where: { userId } });
+    await prisma.drawEntry.deleteMany({ where: { userId } });
+    await prisma.payout.deleteMany({ where: { userId } });
+    await prisma.participantProfile.deleteMany({ where: { userId } });
     await prisma.user.delete({ where: { id: userId } });
     res.json({ message: 'Gebruiker verwijderd' });
   } catch (e) {
-    res.status(500).json({ error: 'Verwijderen mislukt.' });
+    console.error('Verwijderen mislukt:', e.message);
+    res.status(500).json({ error: 'Verwijderen mislukt: ' + e.message });
   }
 });
 
@@ -406,7 +409,28 @@ router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Vul alle velden in.' });
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(400).json({ error: 'Gebruiker bestaat al.' });
+  // Als gebruiker al bestaat maar nog niet geverifieerd → stuur nieuwe code
+  if (existing && !existing.approved) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await prisma.twoFactorCode.create({ data: { userId: existing.id, codeHash: code, expiresAt } });
+    try {
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER, to: email,
+        subject: 'LottoLoJo — Nieuwe verificatiecode',
+        text: `Jouw verificatiecode is: ${code}\n\nDeze code is 30 minuten geldig.`,
+        html: `<div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px;border-radius:12px;border:1px solid #e5e7eb;">
+          <h2 style="color:#166534;">🎱 LottoLoJo</h2>
+          <p>Nieuwe verificatiecode aangevraagd:</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;color:#166534;padding:16px 0;">${code}</div>
+          <p style="color:#6b7280;font-size:13px;">Deze code is 30 minuten geldig.</p></div>`
+      });
+      return res.json({ message: 'Nieuwe verificatiecode verstuurd naar je e-mail.' });
+    } catch {
+      return res.status(500).json({ error: 'Kon geen e-mail sturen.' });
+    }
+  }
+  if (existing && existing.approved) return res.status(400).json({ error: 'Gebruiker bestaat al.' });
   const hash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: { name, email, password: hash, role: 'participant', approved: false }
