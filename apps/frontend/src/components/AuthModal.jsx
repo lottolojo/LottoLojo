@@ -173,8 +173,11 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           }, 1000);
         } else {
           if (data.error === "E-mail nog niet geverifieerd.") {
+            setRegisteredEmail(form.email);
+            setCode(["", "", "", "", "", ""]);
+            setPhase("verifyEmail");
             setInfoType("warn");
-            setInfo("Je account is nog niet geactiveerd. Check je e-mail voor de verificatiecode.");
+            setInfo("Je account is nog niet geactiveerd. Voer hieronder de code in die je per e-mail hebt ontvangen.");
           } else if (data.require2fa) {
             setInfoType("warn");
             setInfo("Te veel mislukte pogingen. Er is een code naar je e-mail gestuurd.");
