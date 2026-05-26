@@ -163,7 +163,14 @@ function Ball({ number, delay, drawMode, revealed, isFallen, isLastNeeded }) {
 
 // --- Hoofd component ---
 export default function Dashboard() {
-  const [language, setLanguage] = useState(localStorage.getItem("lotto_lang") || "nl");
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem("lotto_lang");
+    if (saved) return saved;
+    const bl = (navigator.language || navigator.userLanguage || "nl").toLowerCase();
+    if (bl.startsWith("nl")) return "nl";
+    if (bl.startsWith("es")) return "es";
+    return "en";
+  });
   const stored = localStorage.getItem("lotto_numbers");
   const [numbers, setNumbers] = useState(stored ? JSON.parse(stored) : Array(10).fill(null));
   const [selected, setSelected] = useState([]);

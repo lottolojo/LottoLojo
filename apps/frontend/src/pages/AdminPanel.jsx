@@ -169,7 +169,14 @@ const T = {
 };
 
 export default function AdminPanel({ token }) {
-  const [lang, setLang] = useState(localStorage.getItem("lotto_admin_lang") || "nl");
+  const [lang, setLang] = useState(() => {
+    const saved = localStorage.getItem("lotto_admin_lang");
+    if (saved) return saved;
+    const bl = (navigator.language || navigator.userLanguage || "nl").toLowerCase();
+    if (bl.startsWith("nl")) return "nl";
+    if (bl.startsWith("es")) return "es";
+    return "en";
+  });
   const t = T[lang];
 
   const [users, setUsers] = useState([]);
