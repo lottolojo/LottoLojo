@@ -166,11 +166,19 @@ router.get('/admin/winner', requireAdmin, async (req, res) => {
   res.json({ winners, cumulativeNumbers, drawCount: draws.length });
 });
 
-// Admin: lotto resetten (wis pot transacties)
+// Admin: lotto resetten (wis pot transacties + trekkingen)
 router.post('/admin/reset-lotto', requireAdmin, async (req, res) => {
   await prisma.potTransaction.deleteMany();
   await prisma.draw.deleteMany();
   res.json({ message: 'Lotto gereset — pot is €0, trekkingen gewist.' });
+});
+
+// Admin: alles resetten naar nulstand (trekkingen + pot + alle credits)
+router.post('/admin/reset-all', requireAdmin, async (req, res) => {
+  await prisma.potTransaction.deleteMany();
+  await prisma.draw.deleteMany();
+  await prisma.participantProfile.updateMany({ data: { creditsBalance: 0 } });
+  res.json({ message: 'Alles gereset: trekkingen, pot en credits zijn op nul gezet.' });
 });
 
 // Admin: gebruiker goedkeuren

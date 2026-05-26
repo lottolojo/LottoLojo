@@ -6,10 +6,7 @@ const FLAGS = { nl: "🇳🇱", en: "🇬🇧", es: "🇪🇸" };
 
 const CURRENCIES = {
   EUR: { symbol: '€', name: 'Euro (€)' },
-  USD: { symbol: '$', name: 'US Dollar ($)' },
-  GBP: { symbol: '£', name: 'British Pound (£)' },
   COP: { symbol: '$', name: 'Peso Colombiano ($)' },
-  MXN: { symbol: '$', name: 'Peso Mexicano ($)' },
 };
 
 const T = {
@@ -55,6 +52,10 @@ const T = {
     settingsCurrency: "Valuta",
     settingsSave: "Opslaan",
     settingsSaved: "Instellingen opgeslagen",
+    settingsResetAll: "🗑️ Alles resetten (nul stand)",
+    settingsResetConfirm1: "Weet je het zeker? Dit wist ALLE trekkingen, de pot én de credits van alle deelnemers.",
+    settingsResetConfirm2: "Laatste kans — dit kan NIET ongedaan worden gemaakt. Doorgaan?",
+    settingsResetDone: "Alles gereset naar nul.",
   },
   en: {
     title: "Admin Panel", subtitle: "Participant Management",
@@ -98,6 +99,10 @@ const T = {
     settingsCurrency: "Currency",
     settingsSave: "Save",
     settingsSaved: "Settings saved",
+    settingsResetAll: "🗑️ Reset everything (zero state)",
+    settingsResetConfirm1: "Are you sure? This erases ALL draws, the pot AND all participant credits.",
+    settingsResetConfirm2: "Last chance — this CANNOT be undone. Continue?",
+    settingsResetDone: "Everything reset to zero.",
   },
   es: {
     title: "Panel Admin", subtitle: "Gestión de participantes",
@@ -141,6 +146,10 @@ const T = {
     settingsCurrency: "Moneda",
     settingsSave: "Guardar",
     settingsSaved: "Configuración guardada",
+    settingsResetAll: "🗑️ Resetear todo (estado cero)",
+    settingsResetConfirm1: "¿Estás seguro? Esto borra TODOS los sorteos, el bote Y los créditos de todos.",
+    settingsResetConfirm2: "Última oportunidad — esto NO se puede deshacer. ¿Continuar?",
+    settingsResetDone: "Todo reseteado a cero.",
   }
 };
 
@@ -261,6 +270,22 @@ export default function AdminPanel({ token }) {
       setUsers(u => u.map(u2 => u2.id === userId ? { ...u2, profile: { ...u2.profile, creditsBalance: data.creditsBalance } } : u2));
       setEuroInputs(prev => ({ ...prev, [userId]: '' }));
     } else { setError(data.error || "Fout bij credits."); }
+  }
+
+  async function resetAll() {
+    if (!window.confirm(t.settingsResetConfirm1)) return;
+    if (!window.confirm(t.settingsResetConfirm2)) return;
+    setSettingsLoading(true); setError(""); setSuccess("");
+    const res = await fetch(`${API_URL}/admin/reset-all`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    setSettingsLoading(false);
+    if (res.ok) {
+      setSuccess(t.settingsResetDone);
+      setShowSettings(false);
+      loadData();
+    } else { setError(data.error || "Reset mislukt."); }
   }
 
   async function saveSettings() {
@@ -437,6 +462,12 @@ export default function AdminPanel({ token }) {
                 <button onClick={() => setShowSettings(false)}
                   className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg text-sm">
                   {t.cancel}
+                </button>
+              </div>
+              <div className="mt-4 pt-4 border-t border-red-100">
+                <button onClick={resetAll} disabled={settingsLoading}
+                  className="w-full bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 font-semibold py-2 rounded-lg text-sm transition-all disabled:opacity-60">
+                  {t.settingsResetAll}
                 </button>
               </div>
             </div>
