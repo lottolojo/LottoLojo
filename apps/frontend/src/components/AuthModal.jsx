@@ -75,10 +75,11 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [info, setInfo] = useState("");
   const [infoType, setInfoType] = useState("warn"); // "warn" | "ok" | "err"
+  const [loading, setLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const codeRefs = useRef([]);
 
-  React.useEffect(() => { setPhase(type); setInfo(""); }, [type, open]);
+  React.useEffect(() => { setPhase(type); setInfo(""); setLoading(false); }, [type, open]);
 
   if (!open) return null;
 
@@ -113,11 +114,11 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setInfo("");
+    if (e && e.preventDefault) e.preventDefault();
+    setInfo(""); setLoading(true);
 
-    if (isRegister) {
-      try {
+    try {
+      if (isRegister) {
         const res = await fetch(`${API_URL}/register`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: form.name, email: form.email, password: form.password })
@@ -128,16 +129,14 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           setCode(["", "", "", "", "", ""]);
           setPhase("verifyEmail");
           setInfoType("ok");
-          setInfo("");
+          setInfo(data.message || "");
         } else {
           setInfoType("err"); setInfo(data.error || "Registratie mislukt.");
         }
-      } catch { setInfoType("err"); setInfo("Netwerkfout bij registratie."); }
 
-    } else if (isVerifyEmail) {
-      const fullCode = code.join("");
-      if (fullCode.length !== 6) { setInfoType("err"); setInfo("Vul alle 6 cijfers in."); return; }
-      try {
+      } else if (isVerifyEmail) {
+        const fullCode = code.join("");
+        if (fullCode.length !== 6) { setInfoType("err"); setInfo("Vul alle 6 cijfers in."); setLoading(false); return; }
         const res = await fetch(`${API_URL}/verify-email-code`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: registeredEmail, code: fullCode })
@@ -149,10 +148,8 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
         } else {
           setInfoType("err"); setInfo(data.error || "Ongeldige code.");
         }
-      } catch { setInfoType("err"); setInfo("Netwerkfout bij verificatie."); }
 
-    } else if (isLogin) {
-      try {
+      } else if (isLogin) {
         const res = await fetch(`${API_URL}/login`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: form.email, password: form.password })
@@ -178,10 +175,8 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
             setInfoType("err"); setInfo(data.error || "Ongeldige combinatie. Probeer opnieuw.");
           }
         }
-      } catch { setInfoType("err"); setInfo("Netwerkfout bij inloggen."); }
 
-    } else if (isVerify2fa || isLogin2fa) {
-      try {
+      } else if (isVerify2fa || isLogin2fa) {
         const endpoint = isVerify2fa ? "verify2fa" : "login2fa";
         const res = await fetch(`${API_URL}/${endpoint}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -189,7 +184,11 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
         });
         if (res.ok) { onSubmit(form); }
         else { const data = await res.json(); setInfoType("err"); setInfo(data.error || "Verificatie mislukt."); }
-      } catch { setInfoType("err"); setInfo("Netwerkfout bij verificatie."); }
+      }
+    } catch (err) {
+      setInfoType("err"); setInfo("Netwerkfout — probeer opnieuw. (" + (err?.message || "onbekend") + ")");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -231,9 +230,9 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
                 />
               ))}
             </div>
-            <button onClick={handleSubmit}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-all">
-              {l.verifyBtn}
+            <button onClick={handleSubmit} disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-all disabled:opacity-60">
+              {loading ? "⏳ ..." : l.verifyBtn}
             </button>
             <p className="text-xs text-gray-400">{l.noCodeYet}{" "}
               <span className="text-green-600 cursor-pointer underline"
@@ -293,8 +292,9 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
               <input type="text" name="pincode" placeholder={l.pincode} value={form.pincode} onChange={handleChange}
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400" required maxLength={6}/>
             )}
-            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl mt-1">
-              {l.submit}
+            <button type="submit" disabled={loading}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl mt-1 transition-all disabled:opacity-60">
+              {loading ? "⏳ ..." : l.submit}
             </button>
           </form>
         )}
