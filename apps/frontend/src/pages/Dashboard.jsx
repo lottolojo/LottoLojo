@@ -171,6 +171,7 @@ export default function Dashboard() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
   const [credits, setCredits] = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   // Draw & reveal state
   const [latestDraw, setLatestDraw] = useState(null);
@@ -372,8 +373,8 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-400 to-yellow-300 px-2">
       {showConfetti && <Confetti />}
 
-      {/* Taalkeuze met vlaggen */}
-      <div className="absolute top-4 right-4 flex gap-1 z-10">
+      {/* Taalkeuze met vlaggen + info-knop */}
+      <div className="absolute top-4 right-4 flex gap-1 z-10 items-center">
         {[["nl","🇳🇱"],["en","🇬🇧"],["es","🇪🇸"]].map(([l, flag]) => (
           <button key={l} onClick={() => handleLanguageChange(l)}
             title={l.toUpperCase()}
@@ -381,6 +382,13 @@ export default function Dashboard() {
             {flag}
           </button>
         ))}
+        {credits !== null && (
+          <button onClick={() => setShowInfo(true)}
+            title={language === "nl" ? "Over LottoLoJo" : language === "en" ? "About LottoLoJo" : "Sobre LottoLoJo"}
+            className="ml-1 w-8 h-8 rounded-full bg-white/70 hover:bg-white text-green-800 font-bold text-base flex items-center justify-center shadow transition-all border border-green-300">
+            ?
+          </button>
+        )}
       </div>
 
       {error && <div className="text-red-700 font-bold mb-2">{error}</div>}
@@ -527,6 +535,117 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+
+      {/* Info / Over LottoLoJo modal */}
+      <AnimatePresence>
+        {showInfo && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4"
+            onClick={() => setShowInfo(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative"
+              onClick={e => e.stopPropagation()}>
+
+              {/* Sluitknop */}
+              <button onClick={() => setShowInfo(false)}
+                className="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">×</button>
+
+              {/* Titel */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-3xl">🎱</span>
+                <h2 className="text-xl font-bold text-green-800">
+                  {language === "nl" ? "Over LottoLoJo" : language === "en" ? "About LottoLoJo" : "Sobre LottoLoJo"}
+                </h2>
+              </div>
+
+              {/* Speluitleg */}
+              <div className="mb-4">
+                <h3 className="font-bold text-green-700 mb-1 text-sm uppercase tracking-wide">
+                  {language === "nl" ? "Hoe werkt het spel?" : language === "en" ? "How does the game work?" : "¿Cómo funciona el juego?"}
+                </h3>
+                {language === "nl" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Kies 10 nummers (1–45). Elke week worden er 6 nummers getrokken via de officiële Nederlandse Lotto.
+                    Jouw nummers worden cumulatief bijgehouden — zodra al jouw 10 nummers ooit zijn gevallen, win jij de jackpot!
+                    Nummers die dubbel vallen tellen niet opnieuw mee. Hoe meer trekkingen, hoe groter de pot.
+                  </p>
+                )}
+                {language === "en" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Pick 10 numbers (1–45). Every week, 6 numbers are drawn through the official Dutch Lotto.
+                    Your numbers are tracked cumulatively — once all 10 of your numbers have ever been drawn, you win the jackpot!
+                    Duplicate draws don't count again. The more draws without a winner, the bigger the pot.
+                  </p>
+                )}
+                {language === "es" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Elige 10 números (1–45). Cada semana se sortean 6 números a través de la Lotería Holandesa oficial.
+                    Tus números se rastrean acumulativamente — ¡cuando todos tus 10 números hayan salido alguna vez, ganas el jackpot!
+                    Los números repetidos no cuentan de nuevo. Cuantos más sorteos sin ganador, mayor el bote.
+                  </p>
+                )}
+              </div>
+
+              {/* Verdeling pot */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                <h3 className="font-bold text-green-700 mb-2 text-sm uppercase tracking-wide">
+                  {language === "nl" ? "💰 Verdeling van de pot" : language === "en" ? "💰 Prize distribution" : "💰 Distribución del bote"}
+                </h3>
+                <div className="flex flex-col gap-1 text-sm text-gray-700">
+                  <div className="flex justify-between">
+                    <span>{language === "nl" ? "🏆 Winnaar(s)" : language === "en" ? "🏆 Winner(s)" : "🏆 Ganador(es)"}</span>
+                    <span className="font-bold text-green-700">85%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{language === "nl" ? "❤️ Goed doel" : language === "en" ? "❤️ Charity" : "❤️ Caridad"}</span>
+                    <span className="font-bold text-red-500">15%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Goed doel sectie */}
+              <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🇨🇴</span>
+                  <h3 className="font-bold text-yellow-800 text-sm uppercase tracking-wide">
+                    {language === "nl" ? "Waar gaat de 15% naartoe?" : language === "en" ? "Where does the 15% go?" : "¿A dónde va el 15%?"}
+                  </h3>
+                </div>
+                {language === "nl" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    De 15% organisatiekosten gaan volledig naar een goed doel voor kinderen op scholen
+                    in arme gebieden van Colombia. Met deze bijdrage voorzien we hen van betere leermiddelen,
+                    schoolbenodigdheden en helpen we bij het bijbrengen van onderwijs aan kinderen die dit
+                    het hardst nodig hebben. Samen maken we het verschil! 🙏
+                  </p>
+                )}
+                {language === "en" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    The 15% goes entirely to a charity supporting children in schools in impoverished areas
+                    of Colombia. With this contribution we provide them with better learning materials,
+                    school supplies, and help bring quality education to the children who need it most.
+                    Together we make a difference! 🙏
+                  </p>
+                )}
+                {language === "es" && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    El 15% va íntegramente a una organización benéfica que apoya a niños en escuelas
+                    de zonas pobres de Colombia. Con esta contribución les proporcionamos mejores materiales
+                    de aprendizaje, útiles escolares y ayudamos a brindar educación de calidad a los niños
+                    que más lo necesitan. ¡Juntos hacemos la diferencia! 🙏
+                  </p>
+                )}
+              </div>
+
+              <button onClick={() => setShowInfo(false)}
+                className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-xl transition-all text-sm">
+                {language === "nl" ? "Sluiten" : language === "en" ? "Close" : "Cerrar"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Nummerkiezer modal */}
       {showPicker && (
