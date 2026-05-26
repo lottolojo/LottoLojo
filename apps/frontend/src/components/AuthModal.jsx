@@ -130,13 +130,13 @@ export default function AuthModal({ open, onClose, type, onSubmit, language }) {
           setPhase("verifyEmail");
           if (!data.emailSent && data.devCode) {
             setInfoType("warn");
-            setInfo(`⚠️ Mail mislukt. Testcode: ${data.devCode}`);
+            setInfo(`⚠️ Mail mislukt. Jouw code is: ${data.devCode}`);
           } else if (!data.emailSent) {
             setInfoType("warn");
             setInfo("⚠️ E-mail kon niet worden verstuurd. Vraag de admin om je verificatiecode.");
           } else {
             setInfoType("ok");
-            setInfo(data.message || "");
+            setInfo(data.message || "✅ Code verstuurd! Controleer je inbox.");
           }
         } else {
           setInfoType("err"); setInfo(data.error || "Registratie mislukt.");

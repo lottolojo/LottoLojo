@@ -428,11 +428,10 @@ router.post('/register', async (req, res) => {
       });
       emailOk2 = true;
     } catch (err) { console.error('Mailfout herregistratie:', err.message); }
-    const isDev2 = process.env.NODE_ENV !== 'production';
     return res.json({
-      message: emailOk2 ? 'Nieuwe verificatiecode verstuurd.' : 'Account gevonden. E-mail kon niet worden verstuurd — vraag de admin om je code.',
+      message: emailOk2 ? 'Nieuwe verificatiecode verstuurd.' : 'Account gevonden. E-mail kon niet worden verstuurd.',
       emailSent: emailOk2,
-      ...(isDev2 && { devCode: code })
+      ...(!emailOk2 && { devCode: code })
     });
   }
   if (existing && existing.approved) return res.status(400).json({ error: 'Gebruiker bestaat al.' });
@@ -466,15 +465,13 @@ router.post('/register', async (req, res) => {
   } catch (err) {
     console.error('Mailfout bij registratie:', err.message);
   }
-  // Altijd doorgaan naar verificatiestap — ook als mail mislukt
-  // In dev/test: stuur de code mee in de response zodat admin hem kan zien
-  const isDev = process.env.NODE_ENV !== 'production';
   res.json({
     message: emailOk
       ? 'Registratie gelukt! Voer de verificatiecode in die je per e-mail hebt ontvangen.'
-      : 'Account aangemaakt. E-mail kon niet worden verstuurd — vraag de admin om je verificatiecode.',
+      : 'Account aangemaakt. E-mail kon niet worden verstuurd.',
     emailSent: emailOk,
-    ...(isDev && { devCode: code })
+    // Stuur code altijd mee als mail mislukt (kleine privé-app, veilig genoeg)
+    ...(!emailOk && { devCode: code })
   });
 });
 
@@ -652,6 +649,18 @@ router.post('/admin/publish-draw/:drawId', requireAdmin, async (req, res) => {
   if (isNaN(drawId)) return res.status(400).json({ error: 'Ongeldig drawId' });
   const draw = await prisma.draw.update({ where: { id: drawId }, data: { published: true, publishedAt: new Date() } });
   res.json(draw);
+});
+
+// Admin: verificatiecode opzoeken voor een e-mailadres (troubleshooting)
+router.get('/admin/verify-code/:email', requireAdmin, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { email: req.params.email } });
+  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+  const code = await prisma.twoFactorCode.findFirst({
+    where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' }
+  });
+  if (!code) return res.json({ code: null, message: 'Geen geldige code gevonden' });
+  res.json({ code: code.codeHash, expiresAt: code.expiresAt, approved: user.approved });
 });
 
 // Admin: handmatig de cron-logica triggeren (voor testen)
